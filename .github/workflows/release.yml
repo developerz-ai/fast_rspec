@@ -28,7 +28,7 @@ jobs:
       tag: ${{ steps.v.outputs.tag }}
       due: ${{ steps.v.outputs.due }}
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
         with: { fetch-depth: 0 }
       - id: v
         run: |
@@ -47,7 +47,7 @@ jobs:
       contents: write
       id-token: write
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
       - uses: ruby/setup-ruby@v1
         with: { ruby-version: .ruby-version, bundler-cache: true }
       - run: bundle exec rake compile test smoke
