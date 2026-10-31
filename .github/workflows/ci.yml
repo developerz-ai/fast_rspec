@@ -21,7 +21,7 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 10
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
       - uses: ruby/setup-ruby@v1
         with: { ruby-version: .ruby-version, bundler-cache: true }
       - run: bundle exec rubocop --parallel
@@ -35,7 +35,7 @@ jobs:
       matrix:
         ruby: ['3.2', '3.4', 'jruby', 'truffleruby']
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
       - uses: ruby/setup-ruby@v1
         with: { ruby-version: '${{ matrix.ruby }}', bundler-cache: true }
       - if: ${{ !startsWith(matrix.ruby, 'jruby') && !startsWith(matrix.ruby, 'truffleruby') }}
@@ -50,7 +50,7 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 10
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
       - uses: ruby/setup-ruby@v1
         with: { ruby-version: .ruby-version, bundler-cache: true }
       - run: bundle exec rake smoke
