@@ -78,12 +78,16 @@ jobs:
             "${ACTIONS_ID_TOKEN_REQUEST_URL}&audience=rubygems.org" | jq -r .value)
           body=$(jq -cn --arg jwt "$jwt" --arg owner "$OWNER_ID" \
             'if $owner == "" then {jwt: $jwt} else {jwt: $jwt, owner: $owner} end')
+          # Never print the response: on success it carries the API key.
           resp=$(curl -sS -w '\n%{http_code}' -H 'Content-Type: application/json' -d "$body" \
             https://rubygems.org/api/v1/oidc/trusted_publisher/exchange_token)
           code=$(tail -n1 <<<"$resp"); json=$(sed '$d' <<<"$resp")
-          [ "$code" = 200 ] || { echo "::error::token exchange failed ($code): $json"; exit 1; }
-          key=$(jq -r .rubygems_api_key <<<"$json")
-          echo "::add-mask::$key"
+          key=$(jq -r '.rubygems_api_key // empty' <<<"$json" 2>/dev/null || true)
+          [ -n "$key" ] && echo "::add-mask::$key"
+          if [ -z "$key" ] || [ "${code:0:1}" != 2 ]; then
+            echo "::error::token exchange failed (HTTP $code): $(jq -r '.error // "no error field"' <<<"$json" 2>/dev/null)"
+            exit 1
+          fi
           echo "GEM_HOST_API_KEY=$key" >> "$GITHUB_ENV"
 
       - name: gem push
