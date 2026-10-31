@@ -11,7 +11,7 @@ AllCops:
     - 'vendor/**/*'
     - 'tmp/**/*'
     - 'pkg/**/*'
-    - 'test/apps/**/*'
+    - 'demo/**/*'
 
 Style/Documentation:
   Enabled: false

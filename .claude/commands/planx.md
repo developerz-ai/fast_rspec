@@ -14,12 +14,12 @@ $ARGUMENTS
 ## Steps
 
 1. **Resolve path.** `date +%Y`, `+%m`, `+%d`. `Glob docs/plans/<YYYY>/<MM>/<DD>/1*` → next `1NN` (else `101`). Slug: kebab-case, ≤5 words.
-2. **Explore.** Explore agent (very thorough): affected layers (see `AGENTS.md`), upstream surface in `docs/target/*.md`, existing code `file:line`, oracles + sample apps that prove it, C ext / PureRuby impact, engines affected. No worktrees.
+2. **Explore.** Explore agent (very thorough): affected layers (see `AGENTS.md`), upstream surface in `docs/target/*.md`, existing code `file:line`, oracles + demo apps that prove it, C ext / PureRuby impact, engines affected. No worktrees.
 3. **Write files.** Always `overview.md` + one `<NN>-<aspect>.md` per PR-sized slice. Never one big `plan.md`.
 
    `overview.md`: `## Goal` (1–2 lines) · `## Context` (layers, target docs, pillars at risk) · `## Plan files (execute in order)` · `## Done when` (bin/check green, oracles green, engines green, bench delta recorded) · `## Risks / open questions`.
 
-   Each slice: `## Files to change` · `## Steps` · `## Tests` (unit + oracle + sample app) · `## Compat` (which upstream surface; what must stay identical) · `## Perf` (expected effect, how measured) · `## Done when`.
+   Each slice: `## Files to change` · `## Steps` · `## Tests` (unit + oracle + demo app) · `## Compat` (which upstream surface; what must stay identical) · `## Perf` (expected effect, how measured) · `## Done when`.
 
 4. **`status.yml`:**
 ```yaml

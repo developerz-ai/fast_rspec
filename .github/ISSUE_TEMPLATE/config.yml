@@ -1,5 +1,5 @@
 blank_issues_enabled: true
 contact_links:
   - name: Usage guide (also for AI agents)
-    url: https://github.com/developerz-ai/fast_rspec/blob/main/README.md
-    about: Install, run, batteries and how to turn them off.
+    url: https://github.com/developerz-ai/fast_rspec/blob/main/llms.txt
+    about: Install, commands, batteries, pitfalls — one file.

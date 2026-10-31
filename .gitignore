@@ -12,9 +12,6 @@ log/
 coverage/
 .fast_rspec/
 /vendor/bundle/
-test/apps/*/tmp/
-test/apps/*/log/
-test/apps/*/Gemfile.lock
 .codegraph/
 .idea/
 .DS_Store

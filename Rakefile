@@ -18,9 +18,9 @@ namespace :test do
     abort 'test:oracles: not implemented yet — see docs/idea/09-compat-oracles.md'
   end
 
-  desc 'Run the sample apps (rails_rspec, rails_minitest, plain_ruby)'
+  desc 'Demo apps: RSpec + Minitest suites on the upstream and fast_rspec stacks (STRICT=1 fails on fast_rspec too)'
   task :apps do
-    abort 'test:apps: not implemented yet — see docs/idea/10-testing-ci.md'
+    %w[demo/ruby demo/rails].each { |dir| sh "cd #{dir} && bin/stacks" }
   end
 end
 

@@ -27,7 +27,7 @@ FastRspec: `gem 'fast_rspec'`. Done. RSpec and Minitest themselves are rebuilt l
 | [07-isolation.md](07-isolation.md) | Per-worker DB / Redis / tmp / ports / sequences / seeds |
 | [08-performance.md](08-performance.md) | Every optimization, C ext vs PureRuby, bench rules |
 | [09-compat-oracles.md](09-compat-oracles.md) | Upstream suites as truth |
-| [10-testing-ci.md](10-testing-ci.md) | Own suite, sample apps, CI matrix |
+| [10-testing-ci.md](10-testing-ci.md) | Own suite, demo apps, CI matrix |
 | [11-roadmap.md](11-roadmap.md) | Milestones |
 | [prior-art.md](prior-art.md) | ExUnit, Ecto sandbox, parallel_tests, test-queue, turbo_tests, … |
 | [parity-divergences.md](parity-divergences.md) | Intentional differences from upstream (should stay ~empty) |

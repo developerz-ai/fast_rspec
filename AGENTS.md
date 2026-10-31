@@ -61,7 +61,7 @@ Planned — fill in as each lands. Keep this table true; a row for a command tha
 | Own suite (parallel, dogfooded) | `bin/rake test` |
 | Single file | `bin/rake test TEST=test/path/file_test.rb` |
 | Upstream oracle suites | `bin/rake test:oracles` |
-| Sample apps (Rails rspec / Rails minitest / plain Ruby) | `bin/rake test:apps` |
+| Demo apps, upstream vs fast_rspec stack | `demo/rails/bin/stacks` · `demo/ruby/bin/stacks` (`bin/rake test:apps` runs both) |
 | Benchmarks | `bin/rake bench` · `bin/rake bench:vs_stock` |
 | Lint | `bundle exec rubocop` |
 | Build + install smoke | `bin/rake smoke` |
@@ -117,7 +117,8 @@ Every Ruby is first class, each on its fastest path. Same behavior everywhere; t
 ## Testing
 
 - Our own suite is written in Minitest style and run by **our** Minitest (dogfood). Bootstrap: `test/bootstrap/` runs on plain Ruby with zero framework until the engine is trustworthy.
-- Layers: unit · adapter (rspec + minitest) · sample apps (`test/apps/{rails_rspec,rails_minitest,plain_ruby}`) · oracles (upstream suites) · bench.
+- Layers: unit · frontends (rspec + minitest) · demo apps · oracles (upstream suites) · bench.
+- **Demo apps are the acceptance test.** `demo/rails` (Rails 8.1) and `demo/ruby` (plain Ruby) each carry an RSpec suite AND a Minitest suite exercising every battery. Same test files run on two stacks (`STACK=upstream|fast_rspec`, via `gemfiles/*.gemfile`). Upstream must stay green; fast_rspec turns green milestone by milestone. Never edit a demo test to make fast_rspec pass.
 - **Oracles are truth.** Upstream's suites are the spec. If one fails against us, we're wrong unless the divergence is listed in `docs/idea/parity-divergences.md`.
 - Real Postgres, MySQL, SQLite, Redis in integration tests. Never mock the DB layer we isolate.
 

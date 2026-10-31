@@ -12,7 +12,7 @@ case "$path" in
   */lib/fast_rspec/render/pure_ruby.rb)
     msg="PureRuby twin edited: must stay byte-identical to ext/fast_rspec. Run tests in both modes." ;;
   */lib/fast_rspec/runner/*|*/lib/fast_rspec/isolation/*)
-    msg="Runner/isolation edited: check fork safety (sockets closed before fork, reconnected in child), no per-example allocation in the parent loop, and that serial (-n 1) and parallel results match on a sample app." ;;
+    msg="Runner/isolation edited: check fork safety (sockets closed before fork, reconnected in child), no per-example allocation in the parent loop, and that serial (-n 1) and parallel results match on a demo app (demo/*/bin/stacks)." ;;
   */lib/fast_rspec/rspec/*|*/lib/fast_rspec/minitest/*|*/lib/fast_rspec/engine/*|*/lib/compat/*)
     msg="Drop-in surface edited: match docs/target/*.md exactly (flags, output, exit codes, seed order). Run the relevant oracle ('bin/rake test:oracles'). Any intentional difference needs a row in docs/idea/parity-divergences.md." ;;
   */lib/fast_rspec/batteries/*)
