@@ -2,7 +2,7 @@
 # The one command before a PR: the same gates CI runs, fastest-failing first.
 #   bin/check        lint + compile + unit
 #   bin/check fast   lint + unit
-#   bin/check full   + oracles + sample apps
+#   bin/check full   + oracles + demo apps
 set -euo pipefail
 cd "$(dirname "$0")/.."
 

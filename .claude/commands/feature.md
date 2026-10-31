@@ -36,7 +36,7 @@ $ARGUMENTS
 2. **Explore (parallel).** Affected layers (`AGENTS.md` layout table), patterns to mirror (`file:line`), oracles that cover it, C ext ⇄ PureRuby twin impact.
 3. **Track.** `gh issue list` → reuse or `gh issue create`; PR body `Fixes #NNN`.
 4. **Build.** `git checkout -b feat/<slug>` on a clean tree. Tests with the code. C ext change → PureRuby twin + parity test in the same PR. Battery → `applies?` + `configured_by_user?` + idempotent `install!`.
-5. **Verify.** `bin/check` green. Runner/adapter change → a sample app in `test/apps/` gives the same results serial and parallel. Perf claim → numbers in `docs/benchmarks.md`.
+5. **Verify.** `bin/check` green. Runner/adapter change → `demo/*/bin/stacks` — upstream green, fast_rspec no worse than before, serial == parallel. Perf claim → numbers in `docs/benchmarks.md`.
 6. **PR + merge.** Sweep agent leftovers. `git add <paths>` (never `-A`, never `git stash`). Conventional Commit, scope = layer. `gh pr create` (Summary · Test plan · bench delta). Merge on green, confirm, `git pull`.
 7. **Docs.** Update `AGENTS.md` commands table, `docs/idea/*`, `docs/target/*`, README, CHANGELOG in the same PR when behavior changed.
 

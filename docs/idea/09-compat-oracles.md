@@ -11,6 +11,6 @@ Our RSpec/Minitest are reimplementations, so upstream's suites ARE the spec — 
 | Output golden files | same spec run under stock rspec/minitest vs ours → identical stdout (modulo timings) |
 | activesupport/railties testing | `parallelize`, `rails test` |
 | factory_bot, vcr, webmock | batteries don't change behavior |
-| Sample apps `test/apps/*` | end-to-end: serial result == parallel result |
+| Demo apps `demo/rails`, `demo/ruby` | end-to-end: same files green on upstream and fast_rspec stacks; serial == parallel |
 
 Divergence → we're wrong, unless listed in [parity-divergences.md](parity-divergences.md).

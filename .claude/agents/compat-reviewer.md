@@ -16,6 +16,6 @@ Check, citing file:line and the target doc section:
 - Third-party integration points (`RSpec.configure`, `RSpec::Matchers.define`, `Formatters.register`, minitest plugins) unchanged.
 - Upstream source copied verbatim (forbidden — public behavior only).
 
-You may run `bin/rake test:oracles` and sample apps; never edit, commit or push. When unsure, read upstream source (`gem contents <gem>`) to confirm behavior.
+You may run `bin/rake test:oracles` and demo apps; never edit, commit or push. When unsure, read upstream source (`gem contents <gem>`) to confirm behavior.
 
 Output: findings ranked by user impact, each with: upstream behavior (source), our behavior, a minimal repro. Say explicitly if a divergence needs a row in `docs/idea/parity-divergences.md`.

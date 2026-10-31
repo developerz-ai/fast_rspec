@@ -13,7 +13,7 @@ Claim nothing without numbers in `docs/benchmarks.md`.
 | C ext on CRuby | result encode/decode, runtime log parse, output buffer — PureRuby twin elsewhere |
 | GC tuning in workers | `GC.compact` before fork; optional GC deferral between units |
 
-Bench suites: `rake bench` (vs our past self, regression >5% flagged) · `rake bench:vs_stock` (vs `rspec`, `rails test`, parallel_tests, turbo_tests on sample apps). Report wall clock, CPU, peak RSS, per Ruby engine.
+Bench suites: `rake bench` (vs our past self, regression >5% flagged) · `rake bench:vs_stock` (vs `rspec`, `rails test`, parallel_tests, turbo_tests on demo apps). Report wall clock, CPU, peak RSS, per Ruby engine.
 
 ## 🪶 Lean engine tricks (why our RSpec/Minitest are faster per example)
 | Trick | Upstream today | Ours |

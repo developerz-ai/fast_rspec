@@ -80,7 +80,7 @@ FastRspec.configure { |c| c.batteries.disable :vcr, :capybara }
 
 - [`docs/idea/`](docs/idea/00-seed.md): design and roadmap
 - [`AGENTS.md`](AGENTS.md): conventions for contributors and AI agents
-- `llms.txt`: one-file reference for coding agents (lands with the first release)
+- [`llms.txt`](llms.txt): one-file reference for coding agents (target contract; status per milestone)
 
 ## License
 

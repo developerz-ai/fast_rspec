@@ -2,7 +2,7 @@ name: Canary
 
 # Monthly look ahead: Ruby head. Not part of CI OK, so an upstream break never blocks a PR.
 # The developerz.ai `improve` checkup (.dz/briefs/improve.md) reads the latest run and fixes it.
-# Add Rails edge + rspec/minitest main once the sample apps land (docs/idea/11-roadmap.md).
+# Add Rails edge + rspec/minitest main once the demo apps land (docs/idea/11-roadmap.md).
 on:
   schedule:
     - cron: '0 4 1 * *'
