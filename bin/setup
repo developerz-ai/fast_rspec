@@ -1,6 +1,20 @@
 #!/usr/bin/env bash
+# Install everything the gate needs on a bare box: the C toolchain, Ruby (mise),
+# the bundle, and the compiled extension.
 set -euo pipefail
 cd "$(dirname "$0")/.."
-command -v mise >/dev/null && mise install
+
+# The gem ships a C extension (ext/fast_rspec) — a bare Ubuntu box has no compiler.
+if ! dpkg -s build-essential >/dev/null 2>&1; then
+  sudo -n apt-get update && sudo -n apt-get install -y --no-install-recommends build-essential
+fi
+
+# Ruby comes from mise (mise.toml pins 3.4); a box without mise keeps the system Ruby.
+command -v mise >/dev/null && mise install || true
+
 bundle install
-[ "$(ruby -e 'print RUBY_ENGINE')" = ruby ] && bundle exec rake compile || true
+
+# CRuby gets the C fast path; JRuby/TruffleRuby use the pure-Ruby twin.
+if [ "$(ruby -e 'print RUBY_ENGINE')" = ruby ]; then
+  bundle exec rake compile
+fi
