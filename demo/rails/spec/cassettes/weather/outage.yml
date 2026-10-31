@@ -1,0 +1,23 @@
+---
+http_interactions:
+- request:
+    method: get
+    uri: https://api.example.test/v1/current?city=Atlantis&key=<WEATHER_API_KEY>
+    body:
+      encoding: US-ASCII
+      string: ''
+    headers:
+      Accept:
+      - application/json
+  response:
+    status:
+      code: 503
+      message: Service Unavailable
+    headers:
+      Content-Type:
+      - application/json
+    body:
+      encoding: UTF-8
+      string: '{"error":"upstream timeout"}'
+  recorded_at: Sat, 31 Oct 2026 12:00:00 GMT
+recorded_with: VCR 6.4.1

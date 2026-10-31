@@ -1,0 +1,18 @@
+# frozen_string_literal: true
+
+# STACK=upstream — the real gems a typical Rails app uses today.
+eval_gemfile File.expand_path('common.gemfile', __dir__)
+
+group :development, :test do
+  gem 'factory_bot_rails'
+  gem 'faker'
+  gem 'rspec-rails'
+end
+
+group :test do
+  gem 'database_cleaner-active_record'
+  gem 'minitest-mock' # minitest 6 moved Minitest::Mock / #stub out of minitest
+  gem 'simplecov', require: false
+  gem 'vcr'
+  gem 'webmock'
+end

@@ -1,0 +1,9 @@
+# frozen_string_literal: true
+
+# STACK=fast_rspec — one line replaces rspec-rails, factory_bot_rails, faker, webmock, vcr,
+# database_cleaner-active_record and simplecov. Test files are identical to the upstream stack.
+eval_gemfile File.expand_path('common.gemfile', __dir__)
+
+group :development, :test do
+  gem 'fast_rspec', path: File.expand_path('../../..', __dir__)
+end

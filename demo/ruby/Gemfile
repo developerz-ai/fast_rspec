@@ -1,0 +1,8 @@
+# frozen_string_literal: true
+
+# Picks a stack by ENV: `STACK=fast_rspec bundle exec rspec`. Default: upstream.
+# bin/stacks uses BUNDLE_GEMFILE=gemfiles/<stack>.gemfile instead so each stack keeps its own lockfile.
+stack = ENV.fetch('STACK', 'upstream')
+abort "unknown STACK=#{stack} (upstream | fast_rspec)" unless %w[upstream fast_rspec].include?(stack)
+
+eval_gemfile File.expand_path("gemfiles/#{stack}.gemfile", __dir__)

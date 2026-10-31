@@ -1,0 +1,28 @@
+<% content_for :title, @post.title %>
+<article id="<%= dom_id(@post) %>">
+  <h1><%= @post.title %></h1>
+  <p class="meta">
+    by <%= @post.user.display_name %> ·
+    <%= @post.published? ? "published #{l(@post.published_at, format: :long)}" : "draft" %> ·
+    <%= @post.reading_time_minutes %> min read
+  </p>
+  <%= simple_format @post.body %>
+</article>
+<% unless @post.published? %>
+  <%= button_to "Publish", publish_post_path(@post), method: :patch %>
+<% end %>
+
+<section id="comments">
+  <h2><%= pluralize(@post.comments_count, "comment") %></h2>
+  <% @post.comments.includes(:user).order(:id).each do |comment| %>
+    <% next if comment.new_record? %>
+    <div class="comment" id="<%= dom_id(comment) %>"><strong><%= comment.user.name %>:</strong> <%= comment.body %></div>
+  <% end %>
+  <%= form_with model: [@post, @comment] do |f| %>
+    <%= f.label :user_id, "Commenter" %>
+    <%= f.collection_select :user_id, User.order(:name), :id, :name %>
+    <%= f.label :body, "Comment" %>
+    <%= f.text_area :body %>
+    <%= f.submit "Add comment" %>
+  <% end %>
+</section>
