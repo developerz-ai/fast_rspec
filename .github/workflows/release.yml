@@ -1,11 +1,13 @@
 name: Release
 
-# Merging a version bump is the release: when lib/fast_rspec/version.rb changes on main and no tag
-# v<VERSION> exists, verify, publish the gem (RubyGems Trusted Publishing), then tag + GitHub release.
+# Merging a version bump is the release: when lib/fast_rspec/version.rb changes on main and that
+# version is not on RubyGems yet, verify, build, publish via Trusted Publishing (OIDC, no API key
+# secret), then create the tag + GitHub release LAST — a tag always has a gem behind it.
 # Never tag or `gem push` by hand. The developerz.ai agent opens the release PR (.dz/briefs/release-due.md).
 #
-# One-time setup on rubygems.org: gem "fast_rspec" -> Trusted publishers -> GitHub Actions
-#   repository: developerz-ai/fast_rspec, workflow: release.yml, environment: release
+# Trusted publisher on rubygems.org: repository developerz-ai/fast_rspec, workflow release.yml,
+# environment release. A brand-new gem must name its owning account in the token exchange: the
+# repo variable RUBYGEMS_OWNER_ID (RubyGems account id). Unused once the gem exists.
 on:
   push:
     branches: [main]
@@ -21,23 +23,27 @@ permissions:
 
 jobs:
   version:
-    name: Is v<VERSION> unreleased?
+    name: Is VERSION unpublished?
     runs-on: ubuntu-latest
     timeout-minutes: 5
     outputs:
-      tag: ${{ steps.v.outputs.tag }}
+      version: ${{ steps.v.outputs.version }}
       due: ${{ steps.v.outputs.due }}
     steps:
-      - uses: actions/checkout@v7
-        with: { fetch-depth: 0 }
+      - uses: actions/checkout@v4
       - id: v
         run: |
-          tag="v$(ruby -e 'require "./lib/fast_rspec/version"; print FastRspec::VERSION')"
-          echo "tag=$tag" >> "$GITHUB_OUTPUT"
-          if git rev-parse -q --verify "refs/tags/$tag" >/dev/null; then echo "due=false" >> "$GITHUB_OUTPUT"; else echo "due=true" >> "$GITHUB_OUTPUT"; fi
+          version=$(ruby -e 'require "./lib/fast_rspec/version"; print FastRspec::VERSION')
+          echo "version=$version" >> "$GITHUB_OUTPUT"
+          if curl -fsS -o /dev/null "https://rubygems.org/api/v2/rubygems/fast_rspec/versions/${version}.json"; then
+            echo "fast_rspec $version is already on RubyGems: nothing to release"
+            echo "due=false" >> "$GITHUB_OUTPUT"
+          else
+            echo "due=true" >> "$GITHUB_OUTPUT"
+          fi
 
   publish:
-    name: Publish ${{ needs.version.outputs.tag }}
+    name: Publish v${{ needs.version.outputs.version }}
     needs: version
     if: needs.version.outputs.due == 'true'
     runs-on: ubuntu-latest
@@ -46,14 +52,48 @@ jobs:
     permissions:
       contents: write
       id-token: write
+    env:
+      VERSION: ${{ needs.version.outputs.version }}
     steps:
-      - uses: actions/checkout@v7
+      - uses: actions/checkout@v4
       - uses: ruby/setup-ruby@v1
         with: { ruby-version: .ruby-version, bundler-cache: true }
-      - run: bundle exec rake compile test smoke
-      - uses: rubygems/release-gem@v1
-      - name: Tag + GitHub release
+
+      - name: Verify
+        run: bundle exec rake compile test smoke
+
+      - name: Refuse non-main refs
+        run: |
+          [ "$GITHUB_REF" = "refs/heads/main" ] || { echo "::error::only refs/heads/main releases"; exit 1; }
+
+      # OIDC token → short-lived RubyGems API key. Done by hand because the rubygems/* actions
+      # have no `owner` input, which RubyGems requires when trusted publishing creates a new gem.
+      - name: Trusted publishing credentials
+        env:
+          OWNER_ID: ${{ vars.RUBYGEMS_OWNER_ID }}
+        run: |
+          set -euo pipefail
+          jwt=$(curl -fsS -H "Authorization: bearer $ACTIONS_ID_TOKEN_REQUEST_TOKEN" \
+            "${ACTIONS_ID_TOKEN_REQUEST_URL}&audience=rubygems.org" | jq -r .value)
+          body=$(jq -cn --arg jwt "$jwt" --arg owner "$OWNER_ID" \
+            'if $owner == "" then {jwt: $jwt} else {jwt: $jwt, owner: ($owner | tonumber)} end')
+          resp=$(curl -sS -w '\n%{http_code}' -H 'Content-Type: application/json' -d "$body" \
+            https://rubygems.org/api/v1/oidc/trusted_publisher/exchange_token)
+          code=$(tail -n1 <<<"$resp"); json=$(sed '$d' <<<"$resp")
+          [ "$code" = 200 ] || { echo "::error::token exchange failed ($code): $json"; exit 1; }
+          key=$(jq -r .rubygems_api_key <<<"$json")
+          echo "::add-mask::$key"
+          echo "GEM_HOST_API_KEY=$key" >> "$GITHUB_ENV"
+
+      - name: gem push
+        run: |
+          gem build fast_rspec.gemspec
+          gem push "fast_rspec-${VERSION}.gem"
+
+      - name: Tag + GitHub release (last)
         env:
           GH_TOKEN: ${{ github.token }}
-          TAG: ${{ needs.version.outputs.tag }}
-        run: gh release create "$TAG" --target "$GITHUB_SHA" --title "$TAG" --generate-notes
+        run: |
+          tag="v${VERSION}"
+          if gh release view "$tag" >/dev/null 2>&1; then echo "release $tag exists"; exit 0; fi
+          gh release create "$tag" --target "$GITHUB_SHA" --title "fast_rspec $tag" --generate-notes "fast_rspec-${VERSION}.gem"
