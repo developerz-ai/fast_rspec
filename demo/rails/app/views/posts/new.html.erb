@@ -1,0 +1,27 @@
+<% content_for :title, "New post" %>
+<h1>New post</h1>
+<% if @post.errors.any? %>
+  <div id="errors">
+    <h2><%= pluralize(@post.errors.count, "error") %> prohibited this post from being saved</h2>
+    <ul><% @post.errors.full_messages.each do |message| %><li><%= message %></li><% end %></ul>
+  </div>
+<% end %>
+<%= form_with model: @post do |f| %>
+  <p><%= f.label :user_id, "Author" %> <%= f.collection_select :user_id, User.order(:name), :id, :name %></p>
+  <p><%= f.label :title %> <%= f.text_field :title %></p>
+  <p>
+    <%= f.label :body %>
+    <%= f.text_area :body, data: { max: 5000 } %>
+    <span id="body-counter">0 / 5000</span>
+  </p>
+  <%= f.submit "Create post" %>
+<% end %>
+<%= javascript_tag nonce: true do %>
+  document.addEventListener("DOMContentLoaded", () => {
+    const body = document.getElementById("post_body");
+    const counter = document.getElementById("body-counter");
+    const update = () => { counter.textContent = `${body.value.length} / ${body.dataset.max}`; };
+    body.addEventListener("input", update);
+    update();
+  });
+<% end %>

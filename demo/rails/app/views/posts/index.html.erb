@@ -1,0 +1,14 @@
+<% content_for :title, "Posts" %>
+<h1>Posts</h1>
+<% if @posts.empty? %>
+  <p>No posts yet.</p>
+<% else %>
+  <ul id="posts">
+    <% @posts.each do |post| %>
+      <li id="<%= dom_id(post) %>">
+        <%= link_to post.title, post %> by <%= post.user.display_name %>
+        · <%= pluralize(post.comments_count, "comment") %>
+      </li>
+    <% end %>
+  </ul>
+<% end %>

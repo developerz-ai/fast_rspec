@@ -1,0 +1,15 @@
+# frozen_string_literal: true
+
+# STACK=upstream: the stock test stack a plain-Ruby gem uses today.
+eval_gemfile File.expand_path('common.gemfile', __dir__)
+
+group :test do
+  gem 'factory_bot', '~> 6.5'
+  gem 'faker', '~> 3.5'
+  gem 'minitest', '~> 6.0'
+  gem 'minitest-mock', '~> 5.27' # minitest 6 extracted Minitest::Mock + #stub into this gem
+  gem 'rspec', '~> 3.13'
+  gem 'simplecov', '~> 0.22', require: false
+  gem 'vcr', '~> 6.4'
+  gem 'webmock', '~> 3.26'
+end

@@ -1,0 +1,25 @@
+---
+http_interactions:
+- request:
+    method: get
+    uri: https://api.example.test/v1/rates?base=EUR
+    body:
+      encoding: US-ASCII
+      string: ''
+    headers:
+      Accept:
+      - application/json
+      Authorization:
+      - Bearer <RATES_API_KEY>
+  response:
+    status:
+      code: 200
+      message: OK
+    headers:
+      Content-Type:
+      - application/json; charset=utf-8
+    body:
+      encoding: UTF-8
+      string: '{"base":"EUR","date":"2026-10-30","rates":{"USD":1.0832,"GBP":0.8571,"CHF":0.9401,"JPY":165.12}}'
+  recorded_at: Fri, 30 Oct 2026 09:00:00 GMT
+recorded_with: VCR 6.4.1

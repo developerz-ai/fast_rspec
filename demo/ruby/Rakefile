@@ -1,0 +1,19 @@
+# frozen_string_literal: true
+
+require 'rake/testtask'
+
+begin
+  require 'rspec/core/rake_task'
+  RSpec::Core::RakeTask.new(:spec)
+rescue LoadError
+  desc 'Run RSpec suite (rspec not available)'
+  task(:spec) { abort 'rspec is not available in this bundle' }
+end
+
+Rake::TestTask.new(:test) do |t|
+  t.libs << 'test' << 'lib'
+  t.test_files = FileList['test/**/*_test.rb']
+  t.warning = false
+end
+
+task default: %i[spec test]

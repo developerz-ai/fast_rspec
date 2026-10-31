@@ -1,0 +1,7 @@
+# frozen_string_literal: true
+
+# Shared by both stacks. Runtime is stdlib only; csv left the default gems in Ruby 3.4.
+source 'https://rubygems.org'
+
+gem 'csv'
+gem 'rake', '~> 13.2'

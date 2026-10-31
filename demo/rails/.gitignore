@@ -1,0 +1,15 @@
+# Per-stack lockfiles are not committed (dummy app; resolved fresh in CI).
+/Gemfile.lock
+/gemfiles/*.gemfile.lock
+/.bundle/
+/storage/*.sqlite3*
+/db/*.sqlite3*
+/log/*
+!/log/.keep
+/tmp/*
+!/tmp/.keep
+!/tmp/pids/
+/tmp/pids/*
+!/tmp/pids/.keep
+/coverage/
+/spec/examples.txt

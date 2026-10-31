@@ -1,0 +1,87 @@
+#!/usr/bin/env ruby
+# frozen_string_literal: true
+
+# Runs {rspec, minitest} x {upstream, fast_rspec} on the same spec/ and test/ files and prints a matrix.
+# Exit status: non-zero if an upstream run fails; with STRICT=1, fast_rspec runs count too.
+# Full logs: tmp/stacks/<suite>-<stack>.log
+
+require 'bundler'
+require 'fileutils'
+require 'open3'
+
+ROOT = File.expand_path('..', __dir__)
+LOG_DIR = File.join(ROOT, 'tmp', 'stacks')
+STACKS = %w[upstream fast_rspec].freeze
+SUITES = {
+  'rspec' => %w[bundle exec rspec],
+  'minitest' => %w[bundle exec rake test]
+}.freeze
+
+Row = Struct.new(:suite, :stack, :ok, :count, :wall, :note)
+
+def env_for(stack)
+  { 'STACK' => stack, 'BUNDLE_GEMFILE' => File.join(ROOT, 'gemfiles', "#{stack}.gemfile") }
+end
+
+def count_from(suite, output)
+  case suite
+  when 'rspec'
+    m = output.match(/(\d+) examples?, (\d+) failures?(?:, (\d+) pending)?/) and
+      "#{m[1]} ex, #{m[2]} fail#{", #{m[3]} pend" if m[3]}"
+  else
+    m = output.match(/(\d+) runs, \d+ assertions, (\d+) failures, (\d+) errors, (\d+) skips/) and
+      "#{m[1]} runs, #{m[2]} fail, #{m[3]} err#{", #{m[4]} skip" if m[4] != '0'}"
+  end
+end
+
+def first_error(output)
+  output.each_line do |l|
+    m = l.match(/'?: (.+) \(([A-Z][\w:]*(?:Error|Exception))\)$/) and return "#{m[2]}: #{m[1]}"[0, 90]
+  end
+  line = output.lines.map(&:strip).find { |l| l.match?(/error|cannot load|command not found|Could not/i) }
+  line && line[0, 90]
+end
+
+def run_cmd(env, cmd)
+  started = Process.clock_gettime(Process::CLOCK_MONOTONIC)
+  output, status = Open3.capture2e(env, *cmd, chdir: ROOT)
+  [output, status.success?, Process.clock_gettime(Process::CLOCK_MONOTONIC) - started]
+end
+
+FileUtils.mkdir_p(LOG_DIR)
+rows = []
+
+Bundler.with_unbundled_env do
+  STACKS.each do |stack|
+    install_out, installed, = run_cmd(env_for(stack), %w[bundle install --quiet])
+    File.write(File.join(LOG_DIR, "install-#{stack}.log"), install_out)
+    SUITES.each do |suite, cmd|
+      unless installed
+        rows << Row.new(suite, stack, false, '-', 0.0, "bundle install failed: #{first_error(install_out)}")
+        next
+      end
+      output, ok, wall = run_cmd(env_for(stack), cmd)
+      File.write(File.join(LOG_DIR, "#{suite}-#{stack}.log"), output)
+      rows << Row.new(suite, stack, ok, count_from(suite, output) || '-', wall, ok ? '' : first_error(output).to_s)
+    end
+  end
+end
+
+headers = %w[suite stack result count wall note]
+table = rows.map do |r|
+  [r.suite, r.stack, r.ok ? 'PASS' : 'FAIL', r.count, format('%.2fs', r.wall), r.note]
+end
+widths = headers.each_index.map { |i| ([headers[i]] + table.map { |t| t[i] }).map(&:length).max }
+line = ->(cells) { cells.each_with_index.map { |c, i| c.ljust(widths[i]) }.join(' | ').rstrip }
+
+puts line.(headers)
+puts widths.map { |w| '-' * w }.join('-|-')
+table.each { |t| puts line.(t) }
+puts "\nlogs: #{LOG_DIR.delete_prefix("#{Dir.pwd}/")}"
+
+gating = ENV['STRICT'] == '1' ? rows : rows.select { |r| r.stack == 'upstream' }
+failed = gating.reject(&:ok)
+unless failed.empty?
+  warn "\nFAILED (gating): #{failed.map { |r| "#{r.suite}/#{r.stack}" }.join(', ')}"
+  exit 1
+end

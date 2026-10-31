@@ -1,0 +1,8 @@
+# frozen_string_literal: true
+
+# STACK=fast_rspec: every test gem above replaced by one line. Same spec/ and test/ files.
+eval_gemfile File.expand_path('common.gemfile', __dir__)
+
+group :test do
+  gem 'fast_rspec', path: File.expand_path('../../..', __dir__)
+end

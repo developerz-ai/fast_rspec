@@ -1,0 +1,111 @@
+#!/usr/bin/env ruby
+# frozen_string_literal: true
+
+# Runs {rspec, minitest} x {upstream, fast_rspec} and prints a result matrix.
+#
+#   bin/stacks                     # everything
+#   bin/stacks upstream            # only one stack (or: fast_rspec)
+#   bin/stacks rspec               # only one suite (or: minitest)
+#   STRICT=1 bin/stacks            # fail on fast_rspec-stack failures too
+#   DEMO_JS=0 bin/stacks           # skip the Chrome (cuprite) system tests
+#
+# Exit status is non-zero only when an upstream run fails (any run with STRICT=1).
+# Full output of each run: tmp/stacks/<suite>-<stack>.log
+
+require 'fileutils'
+require 'open3'
+
+ROOT = File.expand_path('..', __dir__)
+LOG_DIR = File.join(ROOT, 'tmp', 'stacks')
+STACKS = %w[upstream fast_rspec].freeze
+SUITES = {
+  'rspec' => %w[bundle exec rspec],
+  'minitest' => %w[bin/rails test:all]
+}.freeze
+
+Run = Struct.new(:suite, :stack, :status, :counts, :seconds, :log, :hint)
+
+def clean_env(stack)
+  env = ENV.keys.grep(/\A(BUNDLE_|BUNDLER_|RUBYGEMS_GEMDEPS)/).to_h { |k| [k, nil] }
+  env['RUBYOPT'] = ENV['RUBYOPT'].to_s.gsub(%r{-rbundler/setup\S*}, '').strip
+  env.merge(
+    'STACK' => stack,
+    'BUNDLE_GEMFILE' => File.join(ROOT, 'gemfiles', "#{stack}.gemfile"),
+    'RAILS_ENV' => 'test'
+  )
+end
+
+def sh(env, *cmd, log:)
+  started = Process.clock_gettime(Process::CLOCK_MONOTONIC)
+  out, status = Open3.capture2e(env, *cmd, chdir: ROOT)
+  seconds = Process.clock_gettime(Process::CLOCK_MONOTONIC) - started
+  File.write(log, "$ #{cmd.join(' ')}\n#{out}", mode: 'a')
+  [out, status.success?, seconds]
+end
+
+def counts_for(suite, out)
+  case suite
+  when 'rspec'
+    m = out.scan(/^(\d+) examples?, (\d+) failures?(?:, (\d+) pending)?/).last
+    m && "#{m[0]} ex, #{m[1]} fail, #{m[2] || 0} pend"
+  else
+    m = out.scan(/^(\d+) runs, \d+ assertions, (\d+) failures, (\d+) errors, (\d+) skips/).last
+    m && "#{m[0]} runs, #{m[1].to_i + m[2].to_i} fail, #{m[3]} skip"
+  end
+end
+
+def first_error(out)
+  line = out.lines.find { |l| l =~ /\((?:\w+::)*\w*(?:Error|Exception)\)\s*\z/ } ||
+         out.lines.find { |l| l =~ /Error|Could not|cannot load|undefined/ } || out.lines.last.to_s
+  line.sub(/\A.*?:in '[^']*': /, '').strip[0, 140]
+end
+
+only = ARGV
+stacks = STACKS.select { |s| only.empty? || only.include?(s) || (only & STACKS).empty? }
+suites = SUITES.keys.select { |s| only.empty? || only.include?(s) || (only & SUITES.keys).empty? }
+
+FileUtils.mkdir_p(LOG_DIR)
+runs = []
+
+stacks.each do |stack|
+  env = clean_env(stack)
+  prep_log = File.join(LOG_DIR, "setup-#{stack}.log")
+  File.write(prep_log, '')
+  $stderr.print "[#{stack}] bundle install + db:prepare… "
+  out, ok, = sh(env, 'bundle', 'install', '--quiet', log: prep_log)
+  out, ok, = sh(env, 'bin/rails', 'db:prepare', log: prep_log) if ok
+  $stderr.puts(ok ? 'ok' : 'FAILED')
+
+  suites.each do |suite|
+    log = File.join(LOG_DIR, "#{suite}-#{stack}.log")
+    File.write(log, '')
+    unless ok
+      runs << Run.new(suite, stack, 'red', '-', 0.0, prep_log, "setup failed: #{first_error(out)}")
+      next
+    end
+    $stderr.print "[#{stack}] #{suite}… "
+    out, passed, seconds = sh(env, *SUITES.fetch(suite), log: log)
+    counts = counts_for(suite, out)
+    $stderr.puts(passed ? 'green' : 'red')
+    runs << Run.new(suite, stack, passed ? 'green' : 'red', counts || '-', seconds, log,
+                    passed ? nil : first_error(out))
+  end
+end
+
+rows = [%w[suite stack result tests wall]] +
+       runs.map { |r| [r.suite, r.stack, r.status, r.counts, format('%.1fs', r.seconds)] }
+widths = rows.transpose.map { |col| col.map(&:size).max }
+line = ->(cells) { "| #{cells.each_with_index.map { |c, i| c.ljust(widths[i]) }.join(' | ')} |" }
+puts
+puts line.(rows.first)
+puts "|#{widths.map { |w| '-' * (w + 2) }.join('|')}|"
+rows.drop(1).each { |r| puts line.(r) }
+
+runs.reject { |r| r.status == 'green' }.each do |r|
+  puts "\n#{r.suite} × #{r.stack}: #{r.hint}\n  log: #{r.log.delete_prefix("#{ROOT}/")}"
+end
+
+strict = ENV['STRICT'] == '1'
+failed = runs.any? { |r| r.status != 'green' && (strict || r.stack == 'upstream') }
+puts "\nfast_rspec stack is expected red until roadmap M3–M4 (STRICT=1 makes it count)." unless strict
+exit(failed ? 1 : 0)

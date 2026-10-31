@@ -1,0 +1,6 @@
+# frozen_string_literal: true
+
+# The real dependency lists live in gemfiles/*.gemfile, one per stack. This file only exists so a
+# plain `bundle install` in this directory works; prefer `STACK=...` (see config/boot.rb, bin/rspec)
+# or `BUNDLE_GEMFILE=gemfiles/<stack>.gemfile`, which keep a separate lockfile per stack.
+eval_gemfile File.expand_path("gemfiles/#{ENV.fetch('STACK', 'upstream')}.gemfile", __dir__)
