@@ -26,7 +26,7 @@ Those paths are what the gemspec ships. Docs, tests, CI and benchmarks never owe
 1. Re-check the window on fresh `main`.
 2. Empty `## [Unreleased]`? Add a `### Changed` line per shipping change.
 3. Bump `lib/fast_rspec/version.rb`; move `## [Unreleased]` under `## [<next>] - <today>`.
-4. `bin/check full && bin/rake smoke`.
+4. `bin/check full && bin/rake smoke`. (Release is due when the version is not on RubyGems; the tag is created after publish.)
 5. One PR titled `release: <next>`, nothing else in it. Merging it is the release. Never tag or `gem push` by hand.
 
 Never open a second release PR while one titled `release: …` is open.
