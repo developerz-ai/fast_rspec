@@ -1,0 +1,3 @@
+# Toolchain as text. Keep in lock-step with .github/workflows/ci.yml.
+[tools]
+ruby = "3.4"

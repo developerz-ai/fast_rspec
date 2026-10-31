@@ -1,0 +1,70 @@
+name: CI
+
+# Branch protection only needs to require the final "CI OK" check.
+on:
+  push: { branches: [main] }
+  pull_request:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: ${{ github.ref != 'refs/heads/main' }}
+
+env:
+  CI: '1'
+
+jobs:
+  lint:
+    name: Lint / RuboCop
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+      - uses: ruby/setup-ruby@v1
+        with: { ruby-version: .ruby-version, bundler-cache: true }
+      - run: bundle exec rubocop --parallel
+
+  test:
+    name: Test / ${{ matrix.ruby }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    strategy:
+      fail-fast: false
+      matrix:
+        ruby: ['3.2', '3.4', 'jruby', 'truffleruby']
+    steps:
+      - uses: actions/checkout@v4
+      - uses: ruby/setup-ruby@v1
+        with: { ruby-version: '${{ matrix.ruby }}', bundler-cache: true }
+      - if: ${{ !startsWith(matrix.ruby, 'jruby') && !startsWith(matrix.ruby, 'truffleruby') }}
+        run: bundle exec rake compile
+      - run: bundle exec rake test
+      - name: PureRuby twin
+        if: ${{ !startsWith(matrix.ruby, 'jruby') && !startsWith(matrix.ruby, 'truffleruby') }}
+        run: FAST_RSPEC_DISABLE_EXT=1 bundle exec rake test
+
+  package:
+    name: Package / build + smoke
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+      - uses: ruby/setup-ruby@v1
+        with: { ruby-version: .ruby-version, bundler-cache: true }
+      - run: bundle exec rake smoke
+
+  ci-ok:
+    name: CI OK
+    if: always()
+    needs: [lint, test, package]
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - name: All required jobs passed
+        env:
+          RESULTS: ${{ join(needs.*.result, ' ') }}
+        run: |
+          echo "Results: $RESULTS"
+          for r in $RESULTS; do [ "$r" = success ] || exit 1; done

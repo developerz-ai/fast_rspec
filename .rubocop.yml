@@ -1,0 +1,24 @@
+plugins:
+  - rubocop-minitest
+  - rubocop-performance
+  - rubocop-rake
+
+AllCops:
+  TargetRubyVersion: 3.2
+  NewCops: enable
+  SuggestExtensions: false
+  Exclude:
+    - 'vendor/**/*'
+    - 'tmp/**/*'
+    - 'pkg/**/*'
+    - 'test/apps/**/*'
+
+Style/Documentation:
+  Enabled: false
+
+Metrics/BlockLength:
+  Exclude: ['*.gemspec', 'Rakefile']
+
+# The bootstrap harness is not Minitest; its assertion helpers are primitives.
+Minitest:
+  Exclude: ['test/bootstrap/**/*']

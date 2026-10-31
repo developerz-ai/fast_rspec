@@ -1,0 +1,23 @@
+version: 2
+# Weekly, grouped. The developerz.ai maintainer agent reviews and merges on a green "CI OK"
+# (.dz/maintainer/maintainer.yml); it is the only merger. 14-day cooldown; security skips it.
+updates:
+  - package-ecosystem: bundler
+    directory: /
+    schedule: { interval: weekly, day: monday }
+    cooldown: { default-days: 14 }
+    open-pull-requests-limit: 10
+    groups:
+      batteries:
+        patterns: ['rspec*', 'minitest*', 'factory_bot*', 'faker', 'vcr', 'webmock', 'database_cleaner*', 'shoulda*', 'capybara', 'cuprite', 'simplecov*']
+      dev-tools:
+        patterns: ['rubocop*', 'rake*', 'benchmark-ips']
+      other:
+        patterns: ['*']
+  - package-ecosystem: github-actions
+    directory: /
+    schedule: { interval: weekly, day: monday }
+    cooldown: { default-days: 14 }
+    groups:
+      github-actions:
+        patterns: ['*']

@@ -1,0 +1,83 @@
+{
+  "$schema": "https://json.schemastore.org/claude-code-settings.json",
+  "permissions": {
+    "allow": [
+      "Bash(bundle install)",
+      "Bash(bundle check)",
+      "Bash(bundle exec rake *)",
+      "Bash(bundle exec rubocop)",
+      "Bash(bundle exec rubocop *)",
+      "Bash(bundle exec ruby *)",
+      "Bash(bundle outdated *)",
+      "Bash(bundle update *)",
+      "Bash(bundle lock *)",
+      "Bash(FAST_RSPEC_DISABLE_EXT=1 bundle exec rake *)",
+      "Bash(FAST_RSPEC_WORKERS=* bundle exec rake *)",
+      "Bash(bin/*)",
+      "Bash(ruby *)",
+      "Bash(gem contents *)",
+      "Bash(gem list *)",
+      "Bash(gem build fast_rspec.gemspec)",
+      "Bash(git status *)",
+      "Bash(git status)",
+      "Bash(git diff *)",
+      "Bash(git diff)",
+      "Bash(git log *)",
+      "Bash(git show *)",
+      "Bash(git archive *)",
+      "Bash(git add *)",
+      "Bash(git commit *)",
+      "Bash(git push)",
+      "Bash(git push *)",
+      "Bash(git checkout *)",
+      "Bash(git switch *)",
+      "Bash(git branch *)",
+      "Bash(git fetch *)",
+      "Bash(git pull *)",
+      "Bash(git pull)",
+      "Bash(git rebase *)",
+      "Bash(git restore *)",
+      "Bash(git rm *)",
+      "Bash(git mv *)",
+      "Bash(gh pr *)",
+      "Bash(gh issue *)",
+      "Bash(gh api *)",
+      "Bash(gh workflow *)",
+      "Bash(gh run *)",
+      "Bash(gh repo view *)",
+      "Bash(gh label *)"
+    ],
+    "deny": [
+      "Read(./.env*)",
+      "Bash(git stash *)",
+      "Bash(git worktree *)",
+      "Bash(git tag *)",
+      "Bash(git push --tags*)",
+      "Bash(git push * --tags*)",
+      "Bash(git push --force*)",
+      "Bash(git push * --force*)",
+      "Bash(git push -f*)",
+      "Bash(git push * -f*)",
+      "Bash(bundle exec rake release*)",
+      "Bash(rake release*)",
+      "Bash(gem push *)",
+      "Bash(gem yank *)",
+      "Bash(gh release *)",
+      "Bash(gh repo delete *)"
+    ]
+  },
+  "hooks": {
+    "PostToolUse": [
+      {
+        "matcher": "Edit|Write|MultiEdit",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "\"$CLAUDE_PROJECT_DIR\"/.claude/hooks/post-edit-reminder.sh",
+            "timeout": 5
+          }
+        ]
+      }
+    ]
+  }
+}

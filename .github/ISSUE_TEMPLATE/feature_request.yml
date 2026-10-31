@@ -1,0 +1,16 @@
+name: Feature request
+description: New battery, speed trick or integration
+labels: [enhancement]
+body:
+  - type: textarea
+    id: problem
+    attributes:
+      label: Problem
+      description: What do you configure by hand today? Paste the support file you'd like to delete.
+      render: ruby
+    validations:
+      required: true
+  - type: textarea
+    id: alternatives
+    attributes:
+      label: Current workaround / alternatives

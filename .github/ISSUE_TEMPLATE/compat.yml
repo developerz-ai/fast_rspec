@@ -1,0 +1,30 @@
+name: Compatibility gap
+description: A flag, API, gem or config that works with stock rspec/minitest but not with fast_rspec
+labels: [compat]
+body:
+  - type: textarea
+    id: surface
+    attributes:
+      label: Upstream surface
+      description: Flag, method, config or gem (with version) that should work.
+    validations:
+      required: true
+  - type: textarea
+    id: steps
+    attributes:
+      label: Steps / config to reproduce
+      render: ruby
+    validations:
+      required: true
+  - type: textarea
+    id: expected
+    attributes:
+      label: Expected vs actual
+    validations:
+      required: true
+  - type: input
+    id: version
+    attributes:
+      label: Versions
+    validations:
+      required: true

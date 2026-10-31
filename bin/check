@@ -1,0 +1,27 @@
+#!/usr/bin/env bash
+# The one command before a PR: the same gates CI runs, fastest-failing first.
+#   bin/check        lint + compile + unit
+#   bin/check fast   lint + unit
+#   bin/check full   + oracles + sample apps
+set -euo pipefail
+cd "$(dirname "$0")/.."
+
+command -v bundle >/dev/null || { echo "bin/check: bundler missing — environment, not a verdict" >&2; exit 75; }
+
+MODE="${1:-pr}"
+failed=()
+stage() {
+  local name="$1"; shift; local t0; t0=$(date +%s)
+  echo; echo "==> ${name}"
+  if "$@"; then echo "    ✓ ${name} ($(($(date +%s) - t0))s)"; else echo "    ✗ ${name}"; failed+=("$name"); fi
+}
+
+stage lint bundle exec rubocop
+[ "$MODE" != fast ] && [ "$(ruby -e 'print RUBY_ENGINE')" = ruby ] && stage compile bundle exec rake compile
+stage unit bundle exec rake test
+if [ "$MODE" = full ]; then
+  stage oracles bundle exec rake test:oracles
+  stage apps bundle exec rake test:apps
+fi
+
+[ ${#failed[@]} -eq 0 ] && echo && echo "✓ all green" || { echo; echo "✗ failed: ${failed[*]}"; exit 1; }

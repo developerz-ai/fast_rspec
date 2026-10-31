@@ -1,0 +1,46 @@
+name: Bug report
+description: Different result than stock rspec / rails test, crash, or flaky only in parallel
+labels: [bug]
+body:
+  - type: textarea
+    id: steps
+    attributes:
+      label: Steps to reproduce
+      description: Command run and the smallest spec/test that shows it. Include the one-line repro fast_rspec printed, if any.
+      render: ruby
+    validations:
+      required: true
+  - type: textarea
+    id: expected
+    attributes:
+      label: Expected (what stock rspec / rails test does)
+    validations:
+      required: true
+  - type: textarea
+    id: actual
+    attributes:
+      label: Actual (output, backtrace)
+      render: text
+    validations:
+      required: true
+  - type: dropdown
+    id: framework
+    attributes:
+      label: Framework
+      options: [RSpec, Minitest, ActiveSupport::TestCase, Both]
+    validations:
+      required: true
+  - type: dropdown
+    id: serial
+    attributes:
+      label: Does it also happen with `-n 1` (serial)?
+      options: ["Yes", "No — parallel only", "Not checked"]
+    validations:
+      required: true
+  - type: input
+    id: version
+    attributes:
+      label: Versions
+      placeholder: "fast_rspec 0.1.0, ruby 3.4.7 +YJIT, Rails 8.1.4, rspec 3.13, minitest 6.0, x86_64-linux"
+    validations:
+      required: true

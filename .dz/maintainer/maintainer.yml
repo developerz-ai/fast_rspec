@@ -1,0 +1,117 @@
+# yaml-language-server: $schema=https://developerz.ai/schemas/maintainer.v1.json
+# developerz.ai maintainer policy — developerz-ai/fast_rspec
+#
+# AI-MANAGED from day one (2026-10-31). The agent handles issues, pull requests and updates end to
+# end, for everyone: outside contributors, collaborators, the owner and the dependency bots. It
+# triages, answers, reviews, declines with a reason, merges, and closes what has stalled on its
+# reporter or author. A PR merges once its author marks it ready, it has been reviewed, and "CI OK"
+# is green. A draft or a "WIP" / "DO NOT MERGE" title is never merged. A human is asked only for
+# what `escalate` names plus the platform's hardcoded categories (security, license, CLA).
+#
+# Releases follow the work: `release-due` opens a release PR when shipping work has waited; merging
+# it IS the release (release.yml publishes when lib/fast_rspec/version.rb changes on main).
+#
+# The gate is the repository, not this file: CI's aggregate "CI OK" check. Verify the ruleset with
+# `gh api repos/developerz-ai/fast_rspec/rulesets` before trusting any sentence here about it.
+version: 1
+
+tone:
+  voice: friendly
+  language: en
+
+triage:
+  skip_project_members: false
+  ask_for_repro: true
+  required_fields: [steps, expected, actual, version]
+  qualify_into: [bug, feature, compat, performance, dupe, question]
+  close_unanswered_repro_after_days: 14
+  # From AGENTS.md "Never" and the three pillars.
+  non_goals:
+    - "Any change that requires users to edit their existing spec/test files, helpers or support files"
+    - "A new test DSL or matcher syntax. Our RSpec/Minitest implement upstream's public API exactly"
+    - "Adding a runtime dependency to the gemspec, or copying upstream source (implement public behavior from docs/target + oracles)"
+    - "Changing an upstream CLI flag, output format, exit code or --seed semantics"
+    - "Overriding configuration the user wrote themselves (user config always wins)"
+    - "Divergence between the C extension and the pure-Ruby implementation"
+    - "Dropping support for a Ruby engine (CRuby, JRuby, TruffleRuby) to make another faster"
+    - "Speed claims in docs without numbers in docs/benchmarks.md"
+    - "Backwards-compatibility shims, dead-code comments, or speculative abstractions"
+    - "Outside contributors' changes to CI, release or publish automation (.github/, .dz/, bin/, Rakefile release tasks, fast_rspec.gemspec, FastRspec::VERSION). Dependency-bot bumps are not covered by this: review and merge them on green"
+
+handoff:
+  mode: fleet
+  ask_reporter_first: false
+
+pr:
+  wait_for_other_bots: [coderabbit, copilot]
+  auto_merge: true
+  auto_merge_scope: any
+  require_review: true
+  required_checks:
+    - "CI OK"
+  close_awaiting_author_after_days: 21
+
+review:
+  enabled: true
+  force: true
+  depth: inline
+  profile: chill
+  request_changes: true
+  approval: false
+  high_level_summary: true
+  learnings: false
+  chat_auto_reply: true
+  auto_review:
+    enabled: true
+    incremental: true
+    drafts: false
+    base_branches: [main]
+    ignore_title_keywords: [WIP, "DO NOT MERGE"]
+  anti_noise:
+    severity_floor: minor
+    max_comments: 10
+    dedupe: true
+  path_filters: []
+  path_instructions:
+    - path: "lib/fast_rspec/runner/**"
+      instructions: >-
+        Parent dispatch loop and worker lifecycle. Check fork safety (sockets closed before fork,
+        reconnected in child), no per-example allocation in the parent hot loop, work-stealing
+        stays pull-based, Ctrl-C / worker crash handling, and that results match a serial run.
+    - path: "lib/fast_rspec/{rspec,minitest}/**"
+      instructions: >-
+        Drop-in boundary. Output format, exit codes, flags and seed semantics must match upstream
+        exactly (docs/target/*.md). Any divergence needs a row in docs/idea/parity-divergences.md.
+    - path: "lib/fast_rspec/batteries/**"
+      instructions: >-
+        Each battery: applies? / configured_by_user? / idempotent install!. User config wins; never
+        double-configure. Plain Ruby must not load Rails.
+    - path: "ext/fast_rspec/**"
+      instructions: >-
+        C hot path. GC safety (RB_GC_GUARD), buffer sizing, and the matching change in
+        lib/fast_rspec/render/pure_ruby.rb with a parity test. Speed claims need before/after numbers.
+
+release:
+  manager: none
+  channels: []
+
+escalate:
+  ask_before_acting: [breaking_change]
+
+schedules:
+  - name: release-due
+    days: [mon, tue, wed, thu, fri]
+    hours_utc: [6]
+    brief_file: .dz/briefs/release-due.md
+  - name: health
+    days: [mon, tue, wed, thu, fri, sat, sun]
+    hours_utc: [7]
+    brief_file: .dz/briefs/health.md
+  - name: improve
+    days: [mon]
+    hours_utc: [8]
+    brief_file: .dz/briefs/improve.md
+  - name: compat
+    days: [wed]
+    hours_utc: [8]
+    brief_file: .dz/briefs/compat.md

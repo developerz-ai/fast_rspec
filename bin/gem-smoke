@@ -1,0 +1,9 @@
+#!/usr/bin/env bash
+# Install the built gem into a throwaway GEM_HOME and require it without Rails.
+set -euo pipefail
+cd "$(dirname "$0")/.."
+gem_file=$(ls -t pkg/fast_rspec-*.gem | head -1)
+home=$(mktemp -d)
+trap 'rm -rf "$home"' EXIT
+GEM_HOME="$home" GEM_PATH="$home:$(gem env gempath)" gem install --no-document "$gem_file" >/dev/null
+GEM_HOME="$home" GEM_PATH="$home:$(gem env gempath)" ruby -e 'require "fast_rspec"; puts "smoke ok: fast_rspec #{FastRspec::VERSION} (#{FastRspec::Render::IMPL.engine})"'

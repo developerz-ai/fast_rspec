@@ -1,0 +1,19 @@
+name: Performance report
+description: Slower than expected, regression, or optimization idea, with numbers
+labels: [performance]
+body:
+  - type: textarea
+    id: bench
+    attributes:
+      label: Numbers
+      description: "Suite size, workers, wall clock: stock rspec / rails test / parallel_tests vs fast_rspec."
+      render: text
+    validations:
+      required: true
+  - type: input
+    id: env
+    attributes:
+      label: Environment
+      placeholder: "ruby 3.4.7 +YJIT, 16 cores, Postgres 17, x86_64-linux"
+    validations:
+      required: true

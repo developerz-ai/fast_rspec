@@ -1,0 +1,6 @@
+#!/usr/bin/env bash
+set -euo pipefail
+cd "$(dirname "$0")/.."
+command -v mise >/dev/null && mise install
+bundle install
+[ "$(ruby -e 'print RUBY_ENGINE')" = ruby ] && bundle exec rake compile || true

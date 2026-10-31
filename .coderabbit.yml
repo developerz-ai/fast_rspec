@@ -1,0 +1,17 @@
+# CodeRabbit configuration — fast_rspec. Docs: https://docs.coderabbit.ai/reference/configuration
+language: en-US
+# Hard cap: 250 characters.
+tone_instructions: >-
+  Friendly and constructive. Three rules: 100% drop-in for RSpec + Minitest
+  (no user file edits, same output/exit codes); zero config, user config wins;
+  measured (no speed claim without numbers). Flag those over nitpicks.
+early_access: false
+reviews:
+  profile: chill
+  request_changes_workflow: true
+  high_level_summary: true
+  path_instructions:
+    - path: "lib/fast_rspec/runner/**"
+      instructions: "Fork safety, no per-example allocation in the parent loop, pull-based work-stealing, results equal to a serial run."
+    - path: "ext/fast_rspec/**"
+      instructions: "GC safety, buffer sizing; matching change + parity test in lib/fast_rspec/render/pure_ruby.rb."

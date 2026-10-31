@@ -1,0 +1,59 @@
+name: Release
+
+# Merging a version bump is the release: when lib/fast_rspec/version.rb changes on main and no tag
+# v<VERSION> exists, verify, publish the gem (RubyGems Trusted Publishing), then tag + GitHub release.
+# Never tag or `gem push` by hand. The developerz.ai agent opens the release PR (.dz/briefs/release-due.md).
+#
+# One-time setup on rubygems.org: gem "fast_rspec" -> Trusted publishers -> GitHub Actions
+#   repository: developerz-ai/fast_rspec, workflow: release.yml, environment: release
+on:
+  push:
+    branches: [main]
+    paths: ['lib/fast_rspec/version.rb']
+  workflow_dispatch:
+
+concurrency:
+  group: release
+  cancel-in-progress: false
+
+permissions:
+  contents: read
+
+jobs:
+  version:
+    name: Is v<VERSION> unreleased?
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    outputs:
+      tag: ${{ steps.v.outputs.tag }}
+      due: ${{ steps.v.outputs.due }}
+    steps:
+      - uses: actions/checkout@v4
+        with: { fetch-depth: 0 }
+      - id: v
+        run: |
+          tag="v$(ruby -e 'require "./lib/fast_rspec/version"; print FastRspec::VERSION')"
+          echo "tag=$tag" >> "$GITHUB_OUTPUT"
+          if git rev-parse -q --verify "refs/tags/$tag" >/dev/null; then echo "due=false" >> "$GITHUB_OUTPUT"; else echo "due=true" >> "$GITHUB_OUTPUT"; fi
+
+  publish:
+    name: Publish ${{ needs.version.outputs.tag }}
+    needs: version
+    if: needs.version.outputs.due == 'true'
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    environment: release
+    permissions:
+      contents: write
+      id-token: write
+    steps:
+      - uses: actions/checkout@v4
+      - uses: ruby/setup-ruby@v1
+        with: { ruby-version: .ruby-version, bundler-cache: true }
+      - run: bundle exec rake compile test smoke
+      - uses: rubygems/release-gem@v1
+      - name: Tag + GitHub release
+        env:
+          GH_TOKEN: ${{ github.token }}
+          TAG: ${{ needs.version.outputs.tag }}
+        run: gh release create "$TAG" --target "$GITHUB_SHA" --title "$TAG" --generate-notes

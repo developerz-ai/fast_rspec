@@ -1,0 +1,24 @@
+name: Canary
+
+# Monthly look ahead: Ruby head. Not part of CI OK, so an upstream break never blocks a PR.
+# The developerz.ai `improve` checkup (.dz/briefs/improve.md) reads the latest run and fixes it.
+# Add Rails edge + rspec/minitest main once the sample apps land (docs/idea/11-roadmap.md).
+on:
+  schedule:
+    - cron: '0 4 1 * *'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  ruby-head:
+    name: Ruby head
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+      - uses: ruby/setup-ruby@v1
+        with: { ruby-version: head, bundler-cache: true }
+      - run: bundle exec rake compile test
+      - run: bundle exec rake smoke
