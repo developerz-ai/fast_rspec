@@ -55,10 +55,25 @@ jobs:
         with: { ruby-version: .ruby-version, bundler-cache: true }
       - run: bundle exec rake smoke
 
+  demo:
+    name: Demo apps / upstream vs fast_rspec
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v7
+      - uses: ruby/setup-ruby@v1
+        with: { ruby-version: .ruby-version, bundler-cache: true }
+      # bin/stacks exits non-zero only when an upstream run fails; the fast_rspec stack is
+      # expected red until roadmap M3–M4, so STRICT/DEMO_JS are deliberately not set here.
+      - name: demo/ruby (upstream gates; fast_rspec expected red)
+        run: cd demo/ruby && bin/stacks
+      - name: demo/rails (upstream gates; fast_rspec expected red)
+        run: cd demo/rails && bin/stacks
+
   ci-ok:
     name: CI OK
     if: always()
-    needs: [lint, test, package]
+    needs: [lint, test, package, demo]
     runs-on: ubuntu-latest
     timeout-minutes: 5
     steps:
