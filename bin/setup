@@ -10,7 +10,11 @@ if ! dpkg -s build-essential >/dev/null 2>&1; then
 fi
 
 # Ruby comes from mise (mise.toml pins 3.4); a box without mise keeps the system Ruby.
-command -v mise >/dev/null && mise install || true
+if command -v mise >/dev/null 2>&1; then
+  mise install
+  mise_env="$(mise env --shell bash)"
+  eval "$mise_env"
+fi
 
 bundle install
 
