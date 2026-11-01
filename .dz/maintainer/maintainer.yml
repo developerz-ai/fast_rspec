@@ -23,7 +23,7 @@ triage:
   skip_project_members: false
   ask_for_repro: true
   required_fields: [steps, expected, actual, version]
-  qualify_into: [bug, feature, compat, performance, dupe, question]
+  qualify_into: [bug, feature, dupe, question]
   close_unanswered_repro_after_days: 14
   # From AGENTS.md "Never" and the three pillars.
   non_goals:
@@ -36,7 +36,7 @@ triage:
     - "Dropping support for a Ruby engine (CRuby, JRuby, TruffleRuby) to make another faster"
     - "Speed claims in docs without numbers in docs/benchmarks.md"
     - "Backwards-compatibility shims, dead-code comments, or speculative abstractions"
-    - "Outside contributors' changes to CI, release or publish automation (.github/, .dz/, bin/, Rakefile release tasks, fast_rspec.gemspec, FastRspec::VERSION). Dependency-bot bumps are not covered by this: review and merge them on green"
+    - "Outside contributors' changes to CI, release or publish automation (.github/, .dz/, bin/, release Rake tasks, gemspec, FastRspec::VERSION); dependency-bot bumps are exempt"
 
 handoff:
   mode: fleet
