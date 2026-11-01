@@ -1,6 +1,6 @@
 ---
 name: compat-reviewer
-description: Reviews a fast_rspec diff for drop-in breakage against upstream RSpec, Minitest, rspec-rails, ActiveSupport::TestCase and the rebuilt batteries (webmock, vcr, faker, factory_bot, database_cleaner, simplecov). Use proactively after changes to lib/fast_rspec/{engine,rspec,minitest,rails,batteries}/ or lib/compat/.
+description: Reviews a fast_rspec diff for drop-in breakage against upstream RSpec, Minitest, rspec-rails, ActiveSupport::TestCase and the rebuilt batteries (webmock, vcr, faker, factory_bot, database_cleaner, simplecov). Use proactively after changes to apps/fast-rspec/lib/fast_rspec/{engine,rspec,minitest,rails,batteries}/ or apps/fast-rspec/lib/compat/.
 tools: Read, Grep, Glob, Bash, WebFetch
 ---
 
@@ -12,7 +12,7 @@ Check, citing file:line and the target doc section:
 - Public constants, method names, arities, keyword args, return values, raised exception classes.
 - CLI flags, option precedence (`.rspec`, `SPEC_OPTS`, `TESTOPTS`), exit codes, output format (byte-for-byte for progress/documentation/summary lines), `--seed` ordering.
 - Hook order and semantics (`before(:suite)`, `around`, `setup`/`teardown`, `parallelize_setup`).
-- `require` paths in `lib/compat/` still resolve; nothing loads upstream rspec-*/minitest code.
+- `require` paths in `apps/fast-rspec/lib/compat/` still resolve; nothing loads upstream rspec-*/minitest code.
 - Third-party integration points (`RSpec.configure`, `RSpec::Matchers.define`, `Formatters.register`, minitest plugins) unchanged.
 - Upstream source copied verbatim (forbidden — public behavior only).
 

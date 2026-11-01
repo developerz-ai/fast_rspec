@@ -4,7 +4,7 @@
 #   bin/check fast   lint + unit
 #   bin/check full   + oracles + demo apps
 set -euo pipefail
-cd "$(dirname "$0")/.."
+cd "$(dirname "$0")/../apps/fast-rspec"
 
 command -v bundle >/dev/null || { echo "bin/check: bundler missing — environment, not a verdict" >&2; exit 75; }
 

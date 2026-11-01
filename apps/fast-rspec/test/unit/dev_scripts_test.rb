@@ -15,7 +15,8 @@ class DevScriptFixtureTest < Bootstrap::Test
 
   def stub(directory, name, body)
     path = File.join(directory, name)
-    File.write(path, "#!/usr/bin/env bash\nset -eu\n#{body}\n")
+    # A stub firing outside APP_DIR means a dev script lost its cd — exit 99, loudly.
+    File.write(path, "#!/usr/bin/env bash\nset -eu\n[ \"$PWD\" = \"$APP_DIR\" ] || exit 99\n#{body}\n")
     File.chmod(0o755, path)
   end
 
@@ -28,6 +29,7 @@ class DevScriptFixtureTest < Bootstrap::Test
       echo "#{label} ruby" >> "$SCRIPT_LOG"
       printf '%s' "$TEST_ENGINE"
     BASH
+    stub(directory, 'gem', %(echo "#{label} gem $*" >> "$SCRIPT_LOG"))
   end
 
   def mise_stub(directory)
@@ -40,9 +42,7 @@ class DevScriptFixtureTest < Bootstrap::Test
 
   def prepare_fixture(root, mise)
     @root = root
-    system_bin = File.join(root, 'system')
-    selected_bin = File.join(root, 'selected')
-    FileUtils.mkdir_p([File.join(root, 'bin'), system_bin, selected_bin])
+    system_bin, selected_bin = mirror_layout(root)
     copy_scripts(root)
     system_stubs(system_bin)
     command_stubs(system_bin, 'system')
@@ -51,9 +51,16 @@ class DevScriptFixtureTest < Bootstrap::Test
     fixture_environment(system_bin, selected_bin)
   end
 
+  # The real scripts cd to "$(dirname "$0")/../apps/fast-rspec" — the fixture mirrors that.
+  def mirror_layout(root)
+    FileUtils.mkdir_p([File.join(root, 'bin'), File.join(root, 'apps/fast-rspec'),
+                       File.join(root, 'system'), File.join(root, 'selected')])
+    [File.join(root, 'system'), File.join(root, 'selected')]
+  end
+
   def copy_scripts(root)
-    %w[setup dev check stop].each do |name|
-      FileUtils.cp(File.expand_path("../../bin/#{name}", __dir__), "#{root}/bin")
+    %w[setup dev check stop rake gem-smoke].each do |name|
+      FileUtils.cp(File.expand_path("../../../../bin/#{name}", __dir__), "#{root}/bin")
     end
   end
 
@@ -66,6 +73,7 @@ class DevScriptFixtureTest < Bootstrap::Test
     @environment = {
       'PATH' => system_bin, 'SELECTED_BIN' => selected_bin,
       'SCRIPT_LOG' => File.join(@root, 'commands.log'),
+      'APP_DIR' => File.join(@root, 'apps/fast-rspec'),
       'TEST_ENGINE' => 'ruby', 'FAIL_COMMAND' => '',
       'BASH_ENV' => nil, 'ENV' => nil
     }
@@ -201,6 +209,47 @@ class CheckScriptTest < DevScriptFixtureTest
   def test_optional_stage_failures_are_propagated
     ['exec rake test:oracles', 'exec rake test:apps'].each do |failure|
       with_fixture(failure: failure) { assert_equal 1, run_script('check', 'full').first }
+    end
+  end
+end
+
+class RakeScriptTest < DevScriptFixtureTest
+  def test_rake_delegates_from_the_app_dir
+    with_fixture { assert_equal [0, ['system bundle exec rake test:oracles']], run_script('rake', 'test:oracles') }
+  end
+end
+
+class GemSmokeScriptTest < DevScriptFixtureTest
+  def gem_smoke_stubs(directory)
+    stub(directory, 'ls', <<~'BASH')
+      while [ "${1#-}" != "$1" ]; do shift; done
+      printf '%s\n' "$@"
+    BASH
+    stub(directory, 'head', <<~'BASH')
+      IFS= read -r first
+      printf '%s\n' "$first"
+    BASH
+    stub(directory, 'mktemp', 'echo "$PWD/.smoke-home"')
+    stub(directory, 'rm', 'exit 0')
+  end
+
+  def fake_built_gem
+    FileUtils.mkdir_p("#{app_dir}/pkg")
+    File.write("#{app_dir}/pkg/fast_rspec-0.0.1.gem", 'stub gem archive')
+  end
+
+  def app_dir
+    @environment.fetch('APP_DIR')
+  end
+
+  def test_gem_smoke_installs_the_built_gem_from_the_app_dir
+    with_fixture do
+      fake_built_gem
+      gem_smoke_stubs(@environment.fetch('PATH'))
+
+      assert_equal [0, ['system gem env gempath',
+                        'system gem install --no-document pkg/fast_rspec-0.0.1.gem',
+                        'system ruby']], run_script('gem-smoke')
     end
   end
 end

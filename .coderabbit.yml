@@ -11,7 +11,7 @@ reviews:
   request_changes_workflow: true
   high_level_summary: true
   path_instructions:
-    - path: "lib/fast_rspec/runner/**"
+    - path: "apps/fast-rspec/lib/fast_rspec/runner/**"
       instructions: "Fork safety, no per-example allocation in the parent loop, pull-based work-stealing, results equal to a serial run."
-    - path: "ext/fast_rspec/**"
-      instructions: "GC safety, buffer sizing; matching change + parity test in lib/fast_rspec/render/pure_ruby.rb."
+    - path: "apps/fast-rspec/ext/fast_rspec/**"
+      instructions: "GC safety, buffer sizing; matching change + parity test in apps/fast-rspec/lib/fast_rspec/render/pure_ruby.rb."

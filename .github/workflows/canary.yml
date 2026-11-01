@@ -11,6 +11,13 @@ on:
 permissions:
   contents: read
 
+env:
+  BUNDLE_GEMFILE: ${{ github.workspace }}/apps/fast-rspec/Gemfile
+
+defaults:
+  run:
+    working-directory: apps/fast-rspec
+
 jobs:
   ruby-head:
     name: Ruby head

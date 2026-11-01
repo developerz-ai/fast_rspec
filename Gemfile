@@ -1,8 +1,10 @@
 # frozen_string_literal: true
 
+# Root workspace Gemfile. Stays in lock-step with apps/fast-rspec/Gemfile,
+# which holds the canonical lockfile.
 source 'https://rubygems.org'
 
-gemspec
+gemspec path: 'apps/fast-rspec'
 
 gem 'benchmark-ips', require: false
 gem 'rake', '~> 13.2'

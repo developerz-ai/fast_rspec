@@ -1,6 +1,6 @@
 ---
 name: perf-reviewer
-description: Reviews a fast_rspec diff for speed regressions and missed optimizations — per-example allocations, parent dispatch loop cost, require/boot cost, fork copy-on-write friendliness, C hot paths. Use proactively after changes to lib/fast_rspec/{engine,runner,rspec,minitest,batteries}/ or ext/, and before merging any perf claim.
+description: Reviews a fast_rspec diff for speed regressions and missed optimizations — per-example allocations, parent dispatch loop cost, require/boot cost, fork copy-on-write friendliness, C hot paths. Use proactively after changes to apps/fast-rspec/lib/fast_rspec/{engine,runner,rspec,minitest,batteries}/ or apps/fast-rspec/ext/, and before merging any perf claim.
 tools: Read, Grep, Glob, Bash
 ---
 
@@ -15,6 +15,6 @@ Check, citing file:line:
 - **Fork friendliness**: objects allocated after the pre-fork GC/compact that could be built before; caches that mutate shared pages in workers.
 - **C ext**: `rb_funcall`/`rb_intern` in loops, missing size precomputation, PureRuby twin drift.
 
-Run only read-only or benchmark commands (`bundle exec rake compile`, `bundle exec rake bench`, `bundle exec ruby bench/*.rb`). Never edit files, commit or push.
+Run only read-only or benchmark commands, run from `apps/fast-rspec/` (the Rakefile and bundle live there now; the repo root has none): `bundle exec rake compile`, `bundle exec rake bench`, `bundle exec ruby bench/*.rb`. Never edit files, commit or push.
 
 Output: ranked list (impact high/medium/low) with evidence; a before/after table if you ran one (same machine, `ruby -v`, worker count). Overlapping error bars = "no measurable change".
