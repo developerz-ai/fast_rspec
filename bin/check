@@ -1,8 +1,10 @@
 #!/usr/bin/env bash
-# The one command before a PR: the same gates CI runs, fastest-failing first.
-#   bin/check        lint + compile + unit
-#   bin/check fast   lint + unit
-#   bin/check full   + oracles + demo apps
+# The one command before a PR: CI's required gates on the active Ruby engine.
+# CI additionally covers its Ruby matrix; this command does not switch Rubies.
+#   bin/check        lint + compile + unit + forced-PureRuby unit + package smoke
+#                    compile and forced-PureRuby unit run only on CRuby
+#   bin/check fast   lint + unit (intentional subset)
+#   bin/check full   default gates + oracles + demo apps
 set -euo pipefail
 cd "$(dirname "$0")/.."
 
@@ -17,8 +19,19 @@ stage() {
 }
 
 stage lint bundle exec rubocop
-[ "$MODE" != fast ] && [ "$(ruby -e 'print RUBY_ENGINE')" = ruby ] && stage compile bundle exec rake compile
+if [ "$MODE" != fast ]; then
+  ENGINE="$(ruby -e 'print RUBY_ENGINE')"
+  if [ "$ENGINE" = ruby ]; then
+    stage compile bundle exec rake compile
+  fi
+fi
 stage unit bundle exec rake test
+if [ "$MODE" != fast ]; then
+  if [ "$ENGINE" = ruby ]; then
+    stage unit-pure-ruby env FAST_RSPEC_DISABLE_EXT=1 bundle exec rake test
+  fi
+  stage smoke bundle exec rake smoke
+fi
 if [ "$MODE" = full ]; then
   stage oracles bundle exec rake test:oracles
   stage apps bundle exec rake test:apps
