@@ -53,7 +53,7 @@
 
 ## `smoke_test` — ok
 
-- test/unit/render_parity_test.rb in the repository
+- apps/fast-rspec/test/unit/render_parity_test.rb in the repository
 - run by ./bin/check exited 0 at head (4.8s)
 
 ## `env_example` — ok

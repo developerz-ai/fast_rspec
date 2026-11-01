@@ -8,9 +8,9 @@ path=$(printf '%s' "$input" | jq -r '.tool_input.file_path // empty' 2>/dev/null
 msg=""
 case "$path" in
   */ext/fast_rspec/*)
-    msg="C extension edited: run 'bundle exec rake compile' before tests (stale .so otherwise). Mirror the change in lib/fast_rspec/render/pure_ruby.rb (byte-identical) and run 'FAST_RSPEC_DISABLE_EXT=1 bundle exec rake test' too. RB_GC_GUARD any VALUE whose pointer outlives a call." ;;
+    msg="C extension edited: run 'bundle exec rake compile' before tests (stale .so otherwise). Mirror the change in apps/fast-rspec/lib/fast_rspec/render/pure_ruby.rb (byte-identical) and run 'FAST_RSPEC_DISABLE_EXT=1 bundle exec rake test' too. RB_GC_GUARD any VALUE whose pointer outlives a call." ;;
   */lib/fast_rspec/render/pure_ruby.rb)
-    msg="PureRuby twin edited: must stay byte-identical to ext/fast_rspec. Run tests in both modes." ;;
+    msg="PureRuby twin edited: must stay byte-identical to apps/fast-rspec/ext/fast_rspec. Run tests in both modes." ;;
   */lib/fast_rspec/runner/*|*/lib/fast_rspec/isolation/*)
     msg="Runner/isolation edited: check fork safety (sockets closed before fork, reconnected in child), no per-example allocation in the parent loop, and that serial (-n 1) and parallel results match on a demo app (demo/*/bin/stacks)." ;;
   */lib/fast_rspec/rspec/*|*/lib/fast_rspec/minitest/*|*/lib/fast_rspec/engine/*|*/lib/compat/*)

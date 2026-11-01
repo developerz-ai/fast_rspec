@@ -1,6 +1,6 @@
 name: Release
 
-# Merging a version bump is the release: when lib/fast_rspec/version.rb changes on main and that
+# Merging a version bump is the release: when apps/fast-rspec/lib/fast_rspec/version.rb changes on main and that
 # version is not on RubyGems yet, verify, build, publish via Trusted Publishing (OIDC, no API key
 # secret), then create the tag + GitHub release LAST — a tag always has a gem behind it.
 # Never tag or `gem push` by hand. The developerz.ai agent opens the release PR (.dz/briefs/release-due.md).
@@ -12,7 +12,7 @@ name: Release
 on:
   push:
     branches: [main]
-    paths: ['lib/fast_rspec/version.rb']
+    paths: ['apps/fast-rspec/lib/fast_rspec/version.rb']
   workflow_dispatch:
 
 concurrency:
@@ -21,6 +21,13 @@ concurrency:
 
 permissions:
   contents: read
+
+env:
+  BUNDLE_GEMFILE: ${{ github.workspace }}/apps/fast-rspec/Gemfile
+
+defaults:
+  run:
+    working-directory: apps/fast-rspec
 
 jobs:
   version:
@@ -58,7 +65,7 @@ jobs:
     steps:
       - uses: actions/checkout@v4
       - uses: ruby/setup-ruby@v1
-        with: { ruby-version: .ruby-version, bundler-cache: true }
+        with: { ruby-version: '3.4', bundler-cache: true }
 
       - name: Verify
         run: bundle exec rake compile test smoke

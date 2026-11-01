@@ -78,7 +78,7 @@ FastRspec.configure { |c| c.batteries.disable :vcr, :capybara }
 
 ## Contributing
 
-The repository root is a Ruby gem, **not an application server**. Its contributor cycle is setup → tests → pre-PR checks:
+The gem lives in `apps/fast-rspec/`; the repository root holds the shared tooling (`bin/`, CI, docs, demos) — **not an application server**. Its contributor cycle is setup → tests → pre-PR checks:
 
 ```bash
 ./bin/setup
@@ -88,7 +88,7 @@ The repository root is a Ruby gem, **not an application server**. Its contributo
 
 ### Prerequisites and setup
 
-- Bash, Ruby and Bundler, plus access to RubyGems to install the development bundle. The gem requires Ruby >= 3.2; `mise.toml` selects Ruby 3.4 and `.ruby-version` pins 3.4.7.
+- Bash, Ruby and Bundler, plus access to RubyGems to install the development bundle. The gem requires Ruby >= 3.2; `mise.toml` and `apps/fast-rspec/.ruby-version` both select Ruby 3.4.
 - With `mise` installed, setup installs and selects the configured toolchain. Without `mise`, setup uses the Ruby already on `PATH`; provide a supported Ruby and Bundler yourself.
 - CRuby needs a C compiler, make and Ruby development headers for the native extension. Setup's build-tool provisioning uses Debian/Ubuntu's `dpkg` and `apt-get`; if `build-essential` is missing, it requires passwordless `sudo` and package-repository access. This is not a portable OS provisioning script.
 
@@ -109,10 +109,10 @@ There is **no configured static typechecker**. The gate returns nonzero if a sta
 For a build-plus-install smoke test, use:
 
 ```bash
-bundle exec rake smoke
+./bin/rake smoke
 ```
 
-That task builds the gem before invoking `./bin/gem-smoke`, which installs it into a temporary gem home and requires it without Rails. Direct `./bin/gem-smoke` needs an already-built `pkg/fast_rspec-*.gem`; it is not a standalone fresh-checkout gate.
+That task builds the gem before invoking `./bin/gem-smoke`, which installs it into a temporary gem home and requires it without Rails. Direct `./bin/gem-smoke` needs an already-built `apps/fast-rspec/pkg/fast_rspec-*.gem`; it is not a standalone fresh-checkout gate.
 
 ## Docs
 

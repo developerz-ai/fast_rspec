@@ -9,7 +9,7 @@
 # what `escalate` names plus the platform's hardcoded categories (security, license, CLA).
 #
 # Releases follow the work: `release-due` opens a release PR when shipping work has waited; merging
-# it IS the release (release.yml publishes when lib/fast_rspec/version.rb changes on main).
+# it IS the release (release.yml publishes when apps/fast-rspec/lib/fast_rspec/version.rb changes on main).
 #
 # The gate is the repository, not this file: CI's aggregate "CI OK" check. Verify the ruleset with
 # `gh api repos/developerz-ai/fast_rspec/rulesets` before trusting any sentence here about it.
@@ -73,23 +73,23 @@ review:
     dedupe: true
   path_filters: []
   path_instructions:
-    - path: "lib/fast_rspec/runner/**"
+    - path: "apps/fast-rspec/lib/fast_rspec/runner/**"
       instructions: >-
         Parent dispatch loop and worker lifecycle. Check fork safety (sockets closed before fork,
         reconnected in child), no per-example allocation in the parent hot loop, work-stealing
         stays pull-based, Ctrl-C / worker crash handling, and that results match a serial run.
-    - path: "lib/fast_rspec/{rspec,minitest}/**"
+    - path: "apps/fast-rspec/lib/fast_rspec/{rspec,minitest}/**"
       instructions: >-
         Drop-in boundary. Output format, exit codes, flags and seed semantics must match upstream
         exactly (docs/target/*.md). Any divergence needs a row in docs/idea/parity-divergences.md.
-    - path: "lib/fast_rspec/batteries/**"
+    - path: "apps/fast-rspec/lib/fast_rspec/batteries/**"
       instructions: >-
         Each battery: applies? / configured_by_user? / idempotent install!. User config wins; never
         double-configure. Plain Ruby must not load Rails.
-    - path: "ext/fast_rspec/**"
+    - path: "apps/fast-rspec/ext/fast_rspec/**"
       instructions: >-
         C hot path. GC safety (RB_GC_GUARD), buffer sizing, and the matching change in
-        lib/fast_rspec/render/pure_ruby.rb with a parity test. Speed claims need before/after numbers.
+        apps/fast-rspec/lib/fast_rspec/render/pure_ruby.rb with a parity test. Speed claims need before/after numbers.
 
 release:
   manager: none

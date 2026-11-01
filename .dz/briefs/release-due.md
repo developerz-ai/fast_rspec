@@ -6,7 +6,7 @@ Weekday checkup, fired by `schedules: release-due`. Decides *when*; `release.yml
 
 ```bash
 last=$(git describe --tags --abbrev=0 --match 'v[0-9]*' origin/main)
-git log --format='%h %cI %s' "$last"..origin/main -- 'lib/**' 'ext/fast_rspec/*.c' 'ext/fast_rspec/*.h' 'ext/fast_rspec/extconf.rb' 'exe/*' fast_rspec.gemspec
+git log --format='%h %cI %s' "$last"..origin/main -- 'apps/fast-rspec/lib/**' 'apps/fast-rspec/ext/fast_rspec/*.c' 'apps/fast-rspec/ext/fast_rspec/*.h' 'apps/fast-rspec/ext/fast_rspec/extconf.rb' 'apps/fast-rspec/exe/*' apps/fast-rspec/fast_rspec.gemspec
 ```
 
 Those paths are what the gemspec ships. Docs, tests, CI and benchmarks never owe a release.
@@ -25,7 +25,7 @@ Those paths are what the gemspec ships. Docs, tests, CI and benchmarks never owe
 
 1. Re-check the window on fresh `main`.
 2. Empty `## [Unreleased]`? Add a `### Changed` line per shipping change.
-3. Bump `lib/fast_rspec/version.rb`; move `## [Unreleased]` under `## [<next>] - <today>`.
+3. Bump `apps/fast-rspec/lib/fast_rspec/version.rb`; move `## [Unreleased]` under `## [<next>] - <today>`.
 4. `bin/check full && bin/rake smoke`. (Release is due when the version is not on RubyGems; the tag is created after publish.)
 5. One PR titled `release: <next>`, nothing else in it. Merging it is the release. Never tag or `gem push` by hand.
 

@@ -9,7 +9,7 @@ The same test files run against two gem stacks, chosen with one env var:
 | `STACK=` | Gemfile | What it is |
 |---|---|---|
 | `upstream` (default) | [`gemfiles/upstream.gemfile`](gemfiles/upstream.gemfile) | the real gems: rspec-rails, factory_bot_rails, faker, webmock, vcr, database_cleaner-active_record, simplecov, minitest-mock + shoulda-matchers, shoulda-context, capybara, cuprite. **Must be green.** |
-| `fast_rspec` | [`gemfiles/fast_rspec.gemfile`](gemfiles/fast_rspec.gemfile) | `gem 'fast_rspec', path: '../..'` replaces everything fast_rspec rebuilds; keeps shoulda-*, capybara, cuprite. |
+| `fast_rspec` | [`gemfiles/fast_rspec.gemfile`](gemfiles/fast_rspec.gemfile) | `gem 'fast_rspec', path: '../../../apps/fast-rspec'` replaces everything fast_rspec rebuilds; keeps shoulda-*, capybara, cuprite. |
 
 Both share [`gemfiles/common.gemfile`](gemfiles/common.gemfile) (rails, sqlite3, puma, shoulda-*,
 capybara, cuprite) via `eval_gemfile`. Each stack gets its own lockfile

@@ -1,6 +1,6 @@
 ---
 name: fork-safety-auditor
-description: Audits fast_rspec for parallel-execution hazards — sockets/handles crossing fork, process-global or thread-unsafe state, per-worker isolation gaps (DB, Redis, ports, tmp, cassettes, coverage). Use after changes to lib/fast_rspec/{runner,isolation,batteries,wiring}/ or when a test is flaky only in parallel.
+description: Audits fast_rspec for parallel-execution hazards — sockets/handles crossing fork, process-global or thread-unsafe state, per-worker isolation gaps (DB, Redis, ports, tmp, cassettes, coverage). Use after changes to apps/fast-rspec/lib/fast_rspec/{runner,isolation,batteries,wiring}/ or when a test is flaky only in parallel.
 tools: Read, Grep, Glob, Bash
 ---
 

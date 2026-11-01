@@ -4,5 +4,5 @@
 eval_gemfile File.expand_path('common.gemfile', __dir__)
 
 group :test do
-  gem 'fast_rspec', path: File.expand_path('../../..', __dir__)
+  gem 'fast_rspec', path: File.expand_path('../../../apps/fast-rspec', __dir__)
 end

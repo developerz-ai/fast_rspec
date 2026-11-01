@@ -5,7 +5,7 @@ A small gem-shaped library (`Shop`, stdlib only, no Rails, no ActiveSupport) wit
 | `STACK` | Test gems | Expected today |
 |---|---|---|
 | `upstream` (default) | rspec 3.13, minitest 6 + minitest-mock, factory_bot, faker, webmock, vcr, simplecov | ✅ green, always |
-| `fast_rspec` | `gem 'fast_rspec', path: '../..'` and nothing else | ❌ red until roadmap M1–M4 (`docs/idea/11-roadmap.md`) |
+| `fast_rspec` | `gem 'fast_rspec', path: '../../../apps/fast-rspec'` and nothing else | ❌ red until roadmap M1–M4 (`docs/idea/11-roadmap.md`) |
 
 This app is an acceptance test for fast_rspec. When the fast_rspec stack fails, fix fast_rspec. Never change the tests to make it pass.
 
