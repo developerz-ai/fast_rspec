@@ -31,7 +31,7 @@ jobs:
       version: ${{ steps.v.outputs.version }}
       due: ${{ steps.v.outputs.due }}
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
       - id: v
         run: |
           version=$(ruby -e 'require "./lib/fast_rspec/version"; print FastRspec::VERSION')
@@ -56,7 +56,7 @@ jobs:
     env:
       VERSION: ${{ needs.version.outputs.version }}
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
       - uses: ruby/setup-ruby@v1
         with: { ruby-version: .ruby-version, bundler-cache: true }
 
