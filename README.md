@@ -76,6 +76,44 @@ FastRspec.configure { |c| c.batteries.disable :vcr, :capybara }
 
 `N` is the number of cores by default. Use `FAST_RSPEC_WORKERS=4` to change it, or `-n 1` for a serial run. Each worker gets its own database, Redis DB, tmp dir and ports. When a test fails, you get a one-line command that reproduces it, including the seed and the worker's files.
 
+## Contributing
+
+The repository root is a Ruby gem, **not an application server**. Its contributor cycle is setup → tests → pre-PR checks:
+
+```bash
+./bin/setup
+./bin/dev
+./bin/check
+```
+
+### Prerequisites and setup
+
+- Bash, Ruby and Bundler, plus access to RubyGems to install the development bundle. The gem requires Ruby >= 3.2; `mise.toml` selects Ruby 3.4 and `.ruby-version` pins 3.4.7.
+- With `mise` installed, setup installs and selects the configured toolchain. Without `mise`, setup uses the Ruby already on `PATH`; provide a supported Ruby and Bundler yourself.
+- CRuby needs a C compiler, make and Ruby development headers for the native extension. Setup's build-tool provisioning uses Debian/Ubuntu's `dpkg` and `apt-get`; if `build-essential` is missing, it requires passwordless `sudo` and package-repository access. This is not a portable OS provisioning script.
+
+`./bin/setup` installs the bundle and compiles the native extension on CRuby. JRuby and TruffleRuby use the pure-Ruby path and skip that compilation step. Toolchain or dependency installation failures must be resolved before continuing.
+
+`./bin/dev` runs `bundle exec rake test`, this gem's own development test suite, and then exits. It does not start a server or persistent services. `./bin/stop` is an idempotent no-op; there is currently nothing at the root to stop.
+
+### Checks and packaging
+
+| Command | Stages |
+|---|---|
+| `./bin/check` | RuboCop lint, native compilation on CRuby, unit tests |
+| `./bin/check fast` | RuboCop lint and unit tests; skips compilation |
+| `./bin/check full` | Default stages, then upstream oracles and demo-app suites |
+
+There is **no configured static typechecker**. The gate returns nonzero if a stage fails. Full mode is not currently a green acceptance gate: the oracle task deliberately aborts with `test:oracles: not implemented yet — see docs/idea/09-compat-oracles.md`. Demo apps have their own dependencies and dual-stack harness; they are not a root development server.
+
+For a build-plus-install smoke test, use:
+
+```bash
+bundle exec rake smoke
+```
+
+That task builds the gem before invoking `./bin/gem-smoke`, which installs it into a temporary gem home and requires it without Rails. Direct `./bin/gem-smoke` needs an already-built `pkg/fast_rspec-*.gem`; it is not a standalone fresh-checkout gate.
+
 ## Docs
 
 - [`docs/idea/`](docs/idea/00-seed.md): design and roadmap

@@ -11,6 +11,14 @@ maintained so that nobody has to watch it. This covers the failures no issue or 
 | Dependabot is not stuck | `gh pr list --app dependabot --json number,createdAt` | none older than 7 days |
 | canary ran | `gh run list --workflow canary.yml --limit 1 --json conclusion,createdAt` | a run in the last 35 days (its failures are `improve`'s job) |
 
+## Rows
+
+- `main-green` — `main` is green
+- `release-published` — the last release published
+- `rubygems-version-served` — RubyGems serves `FastRspec::VERSION`
+- `dependabot-not-stuck` — Dependabot is not stuck
+- `canary-ran` — canary ran
+
 For each unhealthy signal, file one issue unless an open issue already names it. Title names the
 signal (`main is red at <sha>`); body carries the command, its output and the run URL. A red `main`
 comes first. Never delete a tag, re-run a publish or `gem push` from here.

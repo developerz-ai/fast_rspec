@@ -8,7 +8,7 @@
 # is green. A draft or a "WIP" / "DO NOT MERGE" title is never merged. A human is asked only for
 # what `escalate` names plus the platform's hardcoded categories (security, license, CLA).
 #
-# Releases follow the work: `release-due` opens a release PR when shipping work has waited; merging
+# Each week `release-due` judges whether a release is needed and opens a release PR when so; merging
 # it IS the release (release.yml publishes when lib/fast_rspec/version.rb changes on main).
 #
 # The gate is the repository, not this file: CI's aggregate "CI OK" check. Verify the ruleset with
@@ -99,10 +99,17 @@ escalate:
   ask_before_acting: [breaking_change]
 
 schedules:
+  # Weekly and judged, so a merge never cuts a release (owner, 2026-11-01: "no auto, not dependabot,
+  # us developerz.ai AI decides if needed"). One weekday per repo, so the fleet is not hit at once.
   - name: release-due
-    days: [mon, tue, wed, thu, fri]
-    hours_utc: [6]
+    days: [thu]
+    hours_utc: [3]
     brief_file: .dz/briefs/release-due.md
+  # The one exception, so a confirmed security fix does not wait up to a week for the slot above.
+  - name: security-release
+    days: [mon, tue, wed, fri, sat, sun]
+    hours_utc: [1]
+    brief_file: .dz/briefs/security-release.md
   - name: health
     days: [mon, tue, wed, thu, fri, sat, sun]
     hours_utc: [7]

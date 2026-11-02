@@ -12,7 +12,13 @@ rspec/minitest main). Fix ours; file upstream-linked issues for theirs, never sh
 ## 2. At most three improvements, in this order
 1. Anything the canary found.
 2. Compat: open `compat`-labelled issues; failing oracles.
-3. Speed: `bin/rake bench` on `main`; pick a trick from `docs/idea/08-performance.md` (🔬 → ✅). Counts only with before/after numbers in `docs/benchmarks.md`.
+3. Speed: run `bin/rake bench` on `main`; pick a trick from `docs/idea/08-performance.md`
+   (🔬 → ✅). If the bench launcher or rake task is unavailable (missing command, abort like
+   Rakefile's `abort 'bench: not implemented yet'`, or a non-zero exit), record the speed step as an
+   explicit BLOCKED result in the run report: the exact command and its failure output. Never record
+   it as passed and never skip it silently. Only real before/after numbers, measured by a working
+   benchmark and recorded in `docs/benchmarks.md`, count as performance evidence; a blocked run, an
+   estimate or a fabricated number never does.
 4. Correctness: open `bug` issues; flaky-under-parallel reports first.
 5. Docs drift: `README.md`, `AGENTS.md`, `llms.txt`, `docs/target/*` still match the code and upstream.
 6. Simplification: dead code, slow or flaky tests.
@@ -20,3 +26,13 @@ rspec/minitest main). Fix ours; file upstream-linked issues for theirs, never sh
 ## 3. Ship
 One PR per improvement, with evidence (canary log, bench table, failing test). User-visible →
 CHANGELOG `## [Unreleased]`. Never bump the version here. Nothing worth changing → do nothing.
+
+
+## Rows
+
+- `canary` — Canary freshness, results and findings: read the latest run; if none in 7 days, trigger it and read it before step 3. Fix ours; file upstream-linked issues for theirs, never shims.
+- `compat` — Open `compat`-labelled issues and failing oracles.
+- `speed` — Run `bin/rake bench` on `main`; pick a trick from `docs/idea/08-performance.md` (🔬 → ✅). If the launcher or task is unavailable or exits non-zero, report an explicit BLOCKED result with the exact command and failure output, never a pass or silent skip. Only real before/after numbers from a working benchmark, recorded in `docs/benchmarks.md`, count as performance evidence; blocked runs, estimates and fabricated numbers do not.
+- `correctness` — Open `bug` issues, with flaky-under-parallel reports first.
+- `docs-drift` — Check that `README.md`, `AGENTS.md`, `llms.txt` and `docs/target/*` still match the code and upstream.
+- `simplification` — Dead code and slow or flaky tests.
