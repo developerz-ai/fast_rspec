@@ -58,7 +58,7 @@ class DevScriptFixtureTest < Bootstrap::Test
   end
 
   def system_stubs(directory)
-    %w[bash dirname date].each { |name| File.symlink(executable(name), File.join(directory, name)) }
+    %w[bash dirname date env].each { |name| File.symlink(executable(name), File.join(directory, name)) }
     stub(directory, 'dpkg', 'exit 0')
   end
 
@@ -167,12 +167,13 @@ class CheckScriptTest < DevScriptFixtureTest
   def test_default_stages
     with_fixture do
       assert_equal [0, ['system bundle exec rubocop', 'system ruby', 'system bundle exec rake compile',
-                        'system bundle exec rake test']], run_script('check')
+                        'system bundle exec rake test', 'system bundle exec rake test',
+                        'system bundle exec rake smoke']], run_script('check')
     end
   end
 
   def test_default_stage_failures_are_propagated
-    ['exec rubocop', 'exec rake compile', 'exec rake test'].each do |failure|
+    ['exec rubocop', 'exec rake compile', 'exec rake test', 'exec rake smoke'].each do |failure|
       with_fixture(failure: failure) { assert_equal 1, run_script('check').first }
     end
   end
@@ -185,15 +186,16 @@ class CheckScriptTest < DevScriptFixtureTest
 
   def test_alternate_engine_skips_compilation
     with_fixture(engine: 'jruby') do
-      assert_equal [0, ['system bundle exec rubocop', 'system ruby', 'system bundle exec rake test']],
-                   run_script('check')
+      assert_equal [0, ['system bundle exec rubocop', 'system ruby', 'system bundle exec rake test',
+                        'system bundle exec rake smoke']], run_script('check')
     end
   end
 
   def test_full_mode_adds_oracles_and_apps
     with_fixture do
       assert_equal [0, ['system bundle exec rubocop', 'system ruby', 'system bundle exec rake compile',
-                        'system bundle exec rake test', 'system bundle exec rake test:oracles',
+                        'system bundle exec rake test', 'system bundle exec rake test',
+                        'system bundle exec rake smoke', 'system bundle exec rake test:oracles',
                         'system bundle exec rake test:apps']], run_script('check', 'full')
     end
   end
