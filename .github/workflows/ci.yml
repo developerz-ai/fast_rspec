@@ -67,13 +67,15 @@ jobs:
     steps:
       - uses: actions/checkout@v7
       - uses: ruby/setup-ruby@v1
-        with: { ruby-version: .ruby-version, bundler-cache: true }
+        with: { ruby-version: .ruby-version, bundler-cache: true, working-directory: apps/fast-rspec }
       # bin/stacks exits non-zero only when an upstream run fails; the fast_rspec stack is
       # expected red until roadmap M3–M4, so STRICT/DEMO_JS are deliberately not set here.
       - name: demo/ruby (upstream gates; fast_rspec expected red)
-        run: cd demo/ruby && bin/stacks
+        working-directory: demo/ruby
+        run: bin/stacks
       - name: demo/rails (upstream gates; fast_rspec expected red)
-        run: cd demo/rails && bin/stacks
+        working-directory: demo/rails
+        run: bin/stacks
 
   ci-ok:
     name: CI OK
