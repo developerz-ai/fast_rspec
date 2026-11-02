@@ -26,3 +26,13 @@ rspec/minitest main). Fix ours; file upstream-linked issues for theirs, never sh
 ## 3. Ship
 One PR per improvement, with evidence (canary log, bench table, failing test). User-visible →
 CHANGELOG `## [Unreleased]`. Never bump the version here. Nothing worth changing → do nothing.
+
+
+## Rows
+
+- `canary` — Canary freshness, results and findings: read the latest run; if none in 7 days, trigger it and read it before step 3. Fix ours; file upstream-linked issues for theirs, never shims.
+- `compat` — Open `compat`-labelled issues and failing oracles.
+- `speed` — Run `bin/rake bench` on `main`; pick a trick from `docs/idea/08-performance.md` (🔬 → ✅). If the launcher or task is unavailable or exits non-zero, report an explicit BLOCKED result with the exact command and failure output, never a pass or silent skip. Only real before/after numbers from a working benchmark, recorded in `docs/benchmarks.md`, count as performance evidence; blocked runs, estimates and fabricated numbers do not.
+- `correctness` — Open `bug` issues, with flaky-under-parallel reports first.
+- `docs-drift` — Check that `README.md`, `AGENTS.md`, `llms.txt` and `docs/target/*` still match the code and upstream.
+- `simplification` — Dead code and slow or flaky tests.
