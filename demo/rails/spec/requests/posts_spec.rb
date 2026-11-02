@@ -31,7 +31,7 @@ RSpec.describe "Posts" do
     it "shows the post and its comments" do
       post = create(:post, :published, :with_comments, user: author)
       get post_path(post)
-      expect(response.body).to include(post.title, "Ada Lovelace", "2 comments")
+      expect(response.body).to include(ERB::Util.html_escape(post.title), "Ada Lovelace", "2 comments")
     end
 
     it "404s for unknown posts" do
