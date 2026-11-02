@@ -22,6 +22,6 @@ Run the printed repro (`fast_rspec -n1 --seed N <worker's unit sequence>`). Fail
 Compare the resource the test touches against `docs/idea/07-isolation.md`: DB name, Redis DB, port, tmp dir, cassette, coverage file, ActiveStorage root, ENV, class-level state. Ask the `fork-safety-auditor` agent for a second read.
 
 ## 5. Fix where it belongs
-- Our isolation missed a resource → fix in `lib/fast_rspec/isolation/` + a sample-app test proving serial == parallel.
+- Our isolation missed a resource → fix in `apps/fast-rspec/lib/fast_rspec/isolation/` + a sample-app test proving serial == parallel.
 - User's test is order-dependent under stock rspec too → not our bug; report with the bisect output.
 - Divergence from stock behavior → `compat` issue + `docs/idea/parity-divergences.md` if intentional.

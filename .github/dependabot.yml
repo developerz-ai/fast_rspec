@@ -3,7 +3,7 @@ version: 2
 # (.dz/maintainer/maintainer.yml); it is the only merger. 14-day cooldown; security skips it.
 updates:
   - package-ecosystem: bundler
-    directory: /
+    directory: /apps/fast-rspec
     schedule: { interval: weekly, day: monday }
     cooldown: { default-days: 14 }
     open-pull-requests-limit: 10

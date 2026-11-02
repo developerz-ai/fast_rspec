@@ -24,7 +24,7 @@
 - [ ] **Not applicable** — the change cannot touch parallel execution (docs/design prose only). One-line justification:
   <!-- Why parallelism is untouched. Never a stand-in for "didn't run it". -->
 
-- [ ] C change mirrored in `lib/fast_rspec/render/pure_ruby.rb` (parity test passes)
+- [ ] C change mirrored in `apps/fast-rspec/lib/fast_rspec/render/pure_ruby.rb` (parity test passes)
 - [ ] CRuby, JRuby, TruffleRuby green
 - [ ] `CHANGELOG.md` `## [Unreleased]` updated for user-visible changes
 - [ ] `AGENTS.md` / `README.md` / `docs/` updated if commands or behavior changed

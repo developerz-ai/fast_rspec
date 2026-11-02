@@ -1,6 +1,6 @@
 # 🔮 Compat oracles
 
-Our RSpec/Minitest are reimplementations, so upstream's suites ARE the spec — wurk's parity model. Pinned SHAs in `test/oracles/<gem>/.sha`, run against FastRspec in CI. Coverage of each oracle is tracked as a % in `docs/compat.md` and only goes up.
+Our RSpec/Minitest are reimplementations, so upstream's suites ARE the spec — wurk's parity model. Pinned SHAs in `apps/fast-rspec/test/oracles/<gem>/.sha`, run against FastRspec in CI. Coverage of each oracle is tracked as a % in `docs/compat.md` and only goes up.
 
 | Oracle | Proves |
 |---|---|

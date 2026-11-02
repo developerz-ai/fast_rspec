@@ -5,7 +5,7 @@ require 'open3'
 require 'tmpdir'
 
 class CheckTest < Bootstrap::Test
-  SCRIPT = File.expand_path('../../bin/check', __dir__).freeze
+  SCRIPT = File.expand_path('../../../../bin/check', __dir__).freeze
   DEFAULT_COMMANDS = [
     'exec rubocop|',
     'exec rake compile|',

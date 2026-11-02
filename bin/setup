@@ -2,7 +2,7 @@
 # Install everything the gate needs on a bare box: the C toolchain, Ruby (mise),
 # the bundle, and the compiled extension.
 set -euo pipefail
-cd "$(dirname "$0")/.."
+cd "$(dirname "$0")/../apps/fast-rspec"
 
 # The gem ships a C extension (ext/fast_rspec) — a bare Ubuntu box has no compiler.
 if ! dpkg -s build-essential >/dev/null 2>&1; then

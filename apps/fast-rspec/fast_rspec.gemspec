@@ -22,7 +22,7 @@ Gem::Specification.new do |spec|
   spec.metadata['rubygems_mfa_required'] = 'true'
 
   spec.files = Dir['lib/fast_rspec.rb', 'lib/fast_rspec/**/*.rb', 'ext/fast_rspec/*.{c,h,rb}', 'exe/fast_rspec',
-                   'README.md', 'LICENSE', 'CHANGELOG.md']
+                   'LICENSE'] # README.md and CHANGELOG.md remain repo-root docs; they do not ship in the gem
   spec.bindir        = 'exe'
   spec.executables   = ['fast_rspec'] # exe/rspec joins at M2, once our RSpec runs specs
   # lib/compat (upstream require paths → ours) joins require_paths at M1, once our Minitest exists;

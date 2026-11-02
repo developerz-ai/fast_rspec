@@ -23,7 +23,7 @@ Canonical guide for AI coding agents working on this repository.
 
 | Area | Current stack / intended contract |
 |---|---|
-| Runtime | Ruby >= 3.2; development pin Ruby 3.4.7 (`mise.toml`, `.ruby-version`); no runtime gem dependencies |
+| Runtime | Ruby >= 3.2; development pin Ruby 3.4 (`mise.toml`, `apps/fast-rspec/.ruby-version`); no runtime gem dependencies |
 | Tooling | Bundler, Rake, rake-compiler on CRuby, RuboCop with Minitest/performance/Rake plugins |
 | Existing scaffold | Configuration/autoload entrypoint, detection, conditional Railtie, native/pure rendering, bootstrap tests and CLI scaffold |
 | Planned frameworks | Clean RSpec + Minitest implementations on one engine, including `ActiveSupport::TestCase`; Rails 7.1+ |
@@ -34,17 +34,17 @@ Until a rebuilt battery passes its oracle, it may delegate to an installed upstr
 
 ## Commands
 
-Keep this table aligned with `bin/check` and `Rakefile`. Unsupported tasks are not green gates.
+Keep this table aligned with `bin/check` and `apps/fast-rspec/Rakefile`. Unsupported tasks are not green gates.
 
 | Task | Command and actual behavior |
 |---|---|
-| Install | `bundle install` |
+| Install | `bundle install` (in `apps/fast-rspec/`) |
 | Default pre-PR gate | `bin/check`: lint + compile on CRuby + bootstrap unit tests |
 | Fast gate | `bin/check fast`: lint + bootstrap unit tests; skips compilation |
 | Full gate | `bin/check full`: default stages + oracles + demo apps; oracle stage currently fails as unimplemented |
 | Own suite | `bin/rake test`: plain-Ruby bootstrap harness over fixed `test/unit/**/*_test.rb` glob; not dogfooded Minitest or a parallel runner |
 | Single-file filtering | `TEST=...` is not supported by the current Rake task; it still runs the fixed glob |
-| Lint | `bundle exec rubocop` |
+| Lint | `bundle exec rubocop` (in `apps/fast-rspec/`) |
 | Demo stacks | `demo/rails/bin/stacks`, `demo/ruby/bin/stacks`; `bin/rake test:apps` runs both; `STRICT=1` also fails on fast_rspec failures |
 | Build + install smoke | `bin/rake smoke`: builds first, then installs in a temporary GEM_HOME and requires without Rails |
 | Oracles (unavailable) | `bin/rake test:oracles` aborts with “not implemented yet” |
@@ -52,13 +52,14 @@ Keep this table aligned with `bin/check` and `Rakefile`. Unsupported tasks are n
 
 ## Layout (planned)
 
-This heading preserves the `#layout-planned` design-document link. Rows explicitly separate scaffold from planned layers; a scaffold file does not imply a completed subsystem.
+This heading preserves the `#layout-planned` design-document link. The gem lives under `apps/fast-rspec/`; gem-code paths in this table are relative to it, while `bin/`, `demo/` and `docs/` stay at the repository root. Rows explicitly separate scaffold from planned layers; a scaffold file does not imply a completed subsystem.
 
 | State | Path | Responsibility |
 |---|---|---|
 | Scaffold | `lib/fast_rspec.rb`, `lib/fast_rspec/{configuration,detect,render}.rb` | Entry, configuration, host detection, native/pure render dispatch |
 | Scaffold | `lib/fast_rspec/rails/railtie.rb`, `ext/fast_rspec/`, `exe/fast_rspec` | Conditional Rails wiring, native extension, CLI |
-| Existing tooling | `bin/`, `Rakefile`, `test/`, `demo/{rails,ruby}/` | Gates, bootstrap tests, dual-stack demo harnesses |
+| Existing tooling (gem) | `Rakefile`, `test/` | Rake gates, bootstrap tests |
+| Existing tooling (repo root) | `bin/`, `demo/{rails,ruby}/` | Gate scripts, dual-stack demo harnesses |
 | Planned | `lib/fast_rspec/engine/` | Framework-neutral examples/groups, hooks, memoization, filtering, ordering |
 | Planned | `lib/fast_rspec/{rspec,minitest,rails}/` | Full frontend DSLs, assertions, mocks, reporters and Rails test integration |
 | Planned | `lib/compat/`, `exe/rspec` | Upstream require paths and CLI; do not shadow installed frameworks before replacements work |

@@ -20,7 +20,7 @@ namespace :test do
 
   desc 'Demo apps: RSpec + Minitest suites on the upstream and fast_rspec stacks (STRICT=1 fails on fast_rspec too)'
   task :apps do
-    %w[demo/ruby demo/rails].each { |dir| sh "cd #{dir} && bin/stacks" }
+    %w[../../demo/ruby ../../demo/rails].each { |dir| sh "cd #{dir} && bin/stacks" }
   end
 end
 
@@ -31,7 +31,7 @@ end
 
 desc 'Build the gem, install into a temp GEM_HOME, require it without Rails'
 task smoke: :build do
-  sh 'bin/gem-smoke'
+  sh '../../bin/gem-smoke'
 end
 
 task default: :test
