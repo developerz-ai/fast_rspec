@@ -57,12 +57,14 @@ This heading preserves the `#layout-planned` design-document link. The gem lives
 | State | Path | Responsibility |
 |---|---|---|
 | Scaffold | `lib/fast_rspec.rb`, `lib/fast_rspec/{configuration,detect,render}.rb` | Entry, configuration, host detection, native/pure render dispatch |
+| Scaffold | `lib/fast_rspec/version.rb` | Gem version constant (`FastRspec::VERSION`), required by the entrypoint and the gemspec |
 | Scaffold | `lib/fast_rspec/rails/railtie.rb`, `ext/fast_rspec/`, `exe/fast_rspec` | Conditional Rails wiring, native extension, CLI |
+| Scaffold | `lib/fast_rspec/render/pure_ruby.rb` | Pure-Ruby twin of the C extension in `ext/fast_rspec/`, selected when the native ext is unavailable (`FAST_RSPEC_DISABLE_EXT=1`, a non-CRuby engine or a failed ext build) |
 | Existing tooling (gem) | `Rakefile`, `test/` | Rake gates, bootstrap tests |
 | Existing tooling (repo root) | `bin/`, `demo/{rails,ruby}/` | Gate scripts, dual-stack demo harnesses |
 | Planned | `lib/fast_rspec/engine/` | Framework-neutral examples/groups, hooks, memoization, filtering, ordering |
 | Planned | `lib/fast_rspec/{rspec,minitest,rails}/` | Full frontend DSLs, assertions, mocks, reporters and Rails test integration |
-| Planned | `lib/compat/`, `exe/rspec` | Upstream require paths and CLI; do not shadow installed frameworks before replacements work |
+| Planned | `lib/compat/`, `exe/rspec` | Upstream require paths and CLI. The files already present there are inert placeholders, not an implemented upstream-compat layer: the `lib/compat/` stubs only `require 'fast_rspec'`, `exe/rspec` aborts “runner not implemented yet”, and neither is packaged into the gem. Do not shadow installed frameworks before replacements work |
 | Planned | `lib/fast_rspec/batteries/<name>/` | Upstream constants and `applies?`, `configured_by_user?`, idempotent `install!` |
 | Planned | `lib/fast_rspec/wiring/<name>.rb` | Auto-configuration for upstream integrations not rebuilt |
 | Planned | `lib/fast_rspec/runner/`, `scheduler.rb` | Preload, pool supervision, work stealing, runtime log, longest-first and file-to-example splitting |
