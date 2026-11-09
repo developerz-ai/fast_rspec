@@ -48,7 +48,7 @@ Keep this table aligned with `bin/check` and `apps/fast-rspec/Rakefile`. Unsuppo
 | Demo stacks | `demo/rails/bin/stacks`, `demo/ruby/bin/stacks`; `bin/rake test:apps` runs both; `STRICT=1` also fails on fast_rspec failures |
 | Build + install smoke | `bin/rake smoke`: builds first, then installs in a temporary GEM_HOME and requires without Rails |
 | Oracles (unavailable) | `bin/rake test:oracles` aborts with “not implemented yet” |
-| Benchmarks (unavailable) | `bin/rake bench` aborts with “not implemented yet”; no `bench:vs_stock` task exists |
+| Benchmarks | `bin/rake bench` (or `bundle exec rake bench` in `apps/fast-rspec/`): measures fresh-process require cost, allocations and a 10k empty-block floor (no engine yet, so not an example-run number); prints a markdown table, exit 0. Results live in `docs/benchmarks.md`; no `bench:vs_stock` task exists |
 
 ## Layout (planned)
 

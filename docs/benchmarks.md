@@ -16,4 +16,14 @@ Ruby 3.4.7 (+PRISM, YJIT off), x86_64-linux. `require` measured in a fresh proce
 | vcr 6.4 | ~4.9k | 145 ms | 65k | — |
 
 ## fast_rspec
-_None yet — first numbers land with M1._ Targets: `require` < 20 ms / < 5k allocs; 10k trivial examples serial < 0.5 s.
+Measured 2026-11-01 with `bench/run.rb`: median of 15 fresh `ruby -I lib` processes, serial. `ruby 3.4.11 (2026-09-23 revision 592f1ffdb3) +PRISM [x86_64-linux]`, YJIT off, 8 cores, native C extension (`FastRspec::Render.native?` = true).
+
+| Metric | Result | Target |
+|---|---|---|
+| `require "fast_rspec"` | 1.03 ms | < 20 ms |
+| Allocations during `require` | 86 | < 5k |
+| 10,000 empty blocks, serial (harness floor, no engine) | 0.0035 s | < 0.5 s (10k trivial examples) |
+
+No example engine exists yet (`lib/fast_rspec/engine/` is empty), so the 10k row is the cost of calling 10,000 empty `proc {}` serially, not an example-run number. The `require` row covers only the scaffold (`Configuration`, `Detect`, `Render` are autoloaded). Neither row is comparable with the upstream baselines above until the engine lands. The targets (`require` < 20 ms / < 5k allocs; 10k trivial examples serial < 0.5 s) are targets, not claims.
+
+Reproduce: `cd apps/fast-rspec && bundle exec rake bench` (`BENCH_RUNS=N` changes the sample count).

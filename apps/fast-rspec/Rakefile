@@ -26,7 +26,7 @@ end
 
 desc 'Benchmarks vs our own past self'
 task :bench do
-  abort 'bench: not implemented yet — see docs/idea/08-performance.md'
+  ruby 'bench/run.rb'
 end
 
 desc 'Build the gem, install into a temp GEM_HOME, require it without Rails'
