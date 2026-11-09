@@ -48,7 +48,7 @@ Keep this table aligned with `bin/check` and `apps/fast-rspec/Rakefile`. Unsuppo
 | Demo stacks | `demo/rails/bin/stacks`, `demo/ruby/bin/stacks`; `bin/rake test:apps` runs both; `STRICT=1` also fails on fast_rspec failures |
 | Build + install smoke | `bin/rake smoke`: builds first, then installs in a temporary GEM_HOME and requires without Rails |
 | Oracles (unavailable) | `bin/rake test:oracles` aborts with “not implemented yet” |
-| Benchmarks (unavailable) | `bin/rake bench` aborts with “not implemented yet”; no `bench:vs_stock` task exists |
+| Benchmarks | `bin/rake bench` (or `bundle exec rake bench` in `apps/fast-rspec/`): measures fresh-process require cost, allocations and a 10k empty-block floor (no engine yet, so not an example-run number); prints a markdown table, exit 0. Results live in `docs/benchmarks.md`; no `bench:vs_stock` task exists |
 
 ## Layout (planned)
 
@@ -75,6 +75,8 @@ This heading preserves the `#layout-planned` design-document link. The gem lives
 - Before wiring anything, check for user configuration. Log automatic wiring at `FAST_RSPEC_DEBUG=1`.
 - Use frozen string literals everywhere. Comments explain non-obvious reasons, not the code itself.
 - Minimize allocations/syscalls in scheduler/reporter loops: one IPC message per file, not per example; no per-test process spawn.
+- Pin the Ruby series, not an exact patch (`3.4`, not `3.4.7`) in `mise.toml` and `apps/fast-rspec/.ruby-version`: CI runner images build only the latest patch of each series, so an exact-patch pin 404s in `ruby/setup-ruby`.
+- C sources include `<stdbool.h>` before `<ruby.h>`: Ruby 3.2's `ruby/internal/stdbool.h` defines `bool` only when the installed `ruby/config.h` carries `HAVE_STDBOOL_H` (3.3+ includes the header itself), so the 3.2 floor needs it explicitly.
 
 ## Testing rules
 
