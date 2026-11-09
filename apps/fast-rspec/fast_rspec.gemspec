@@ -8,10 +8,13 @@ Gem::Specification.new do |spec|
   spec.authors = ['developerz.ai']
   spec.email   = ['admin@developerz.ai']
 
-  spec.summary     = 'Lean drop-in RSpec + Minitest, parallel on every core, whole test stack bundled.'
-  spec.description = 'One gem line replaces rspec-rails, factory_bot, faker, vcr, webmock, database_cleaner, ' \
-                     'shoulda, capybara and simplecov. Parallel on every core by default (fork on CRuby, ' \
-                     'threads on JRuby/TruffleRuby). Works with Rails and plain Ruby.'
+  spec.summary     = 'Target: lean drop-in RSpec + Minitest on one parallel engine with the test stack bundled ' \
+                     '(design phase; scaffold only).'
+  spec.description = 'Design-phase scaffold. The target is one gem line that replaces rspec-rails, factory_bot, ' \
+                     'faker, vcr, webmock, database_cleaner, shoulda, capybara and simplecov, running in ' \
+                     'parallel on every core (fork on CRuby, threads on JRuby/TruffleRuby). The framework ' \
+                     'frontends, parallel pool and batteries are planned milestones (docs/idea/11-roadmap.md), ' \
+                     'not shipped.'
   spec.homepage = 'https://github.com/developerz-ai/fast_rspec'
   spec.license  = 'MIT'
   spec.required_ruby_version = '>= 3.2.0'

@@ -1,5 +1,5 @@
 ---
-description: End-to-end feature workflow for fast_rspec — understand, explore, build (parallel agents in this one checkout, no worktrees), gate on bin/check + oracles + bench, PR, merge. Tracks in GitHub issues.
+description: End-to-end feature workflow for fast_rspec — understand, explore, build (parallel agents in this one checkout, no worktrees), gate on bin/check (oracles + bench once implemented), PR, merge. Tracks in GitHub issues.
 argument-hint: <what you want built, plain language> [+ reference URL(s)]
 allowed-tools: Read, Write, Edit, Glob, Grep, Bash, Agent, SendMessage, TaskCreate, TaskUpdate, TaskList, Skill, WebFetch
 ---
@@ -27,9 +27,9 @@ $ARGUMENTS
 | | Agent | Coordinator (once, at the end) |
 |---|---|---|
 | lint | `bundle exec rubocop <its files>` | `bin/check` |
-| tests | `bin/rake test TEST=<its files>` with `FAST_RSPEC_WORKERS=1` | `bin/check` (`full` if runner/adapters/batteries touched) |
-| compat | the oracle for its battery/adapter | `bin/rake test:oracles` |
-| perf | — | `bin/rake bench` when runner/hot paths touched |
+| tests | `FAST_RSPEC_WORKERS=1 bin/rake test` (fixed glob; `TEST=` filtering is unsupported) | `bin/check` (`full` if runner/adapters/batteries touched) |
+| compat | not yet implemented — oracle execution does not exist yet (`bin/rake test:oracles` aborts) | — |
+| perf | — | not yet implemented — `bin/rake bench` aborts; no benchmark gate exists yet |
 
 ## Flow
 1. **Understand.** Goal in one line. Cited URLs → `WebFetch`, extract the mechanism. Check `docs/target/*.md` for the exact upstream surface involved.
