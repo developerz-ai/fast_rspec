@@ -1,34 +1,36 @@
 # fast_rspec
 
-> Ruby gem: one Gemfile line replaces the whole test stack. Lean, API-compatible reimplementations of RSpec (core, expectations, mocks, rails) and Minitest (5 + 6, incl. Rails' `ActiveSupport::TestCase`), parallel on every CPU core by default, with WebMock, VCR, Faker, database cleaning, SimpleCov and (later) FactoryBot rebuilt in and auto-configured. shoulda-matchers and Capybara/Cuprite stay upstream and are auto-wired. Zero runtime dependencies. Rails and plain Ruby. CRuby (fork pool + C extension), JRuby and TruffleRuby (thread pool + pure-Ruby twin).
+> Target: a Ruby gem where one Gemfile line replaces the whole test stack. Planned lean, API-compatible reimplementations of RSpec (core, expectations, mocks, rails) and Minitest (5 + 6, incl. Rails' `ActiveSupport::TestCase`), parallel on every CPU core by default, with WebMock, VCR, Faker, database cleaning, SimpleCov and (later) FactoryBot rebuilt in and auto-configured; shoulda-matchers and Capybara/Cuprite stay upstream and are auto-wired. Design constraint: zero runtime dependencies. Aimed at Rails and plain Ruby; CRuby (fork pool + C extension), JRuby and TruffleRuby (thread pool + pure-Ruby twin). No speed claim until numbers exist in `docs/benchmarks.md`.
 
 **Status (2026-10-31): design phase — nothing below works yet.** This file describes the target contract so agents write compatible code from day one. Each section says which roadmap milestone ships it (`docs/idea/11-roadmap.md`).
 
 Install: `gem 'fast_rspec'` in the `:development, :test` group. Remove the gems it replaces. MIT. Source: https://github.com/developerz-ai/fast_rspec. Maintained by developerz.ai (AI maintainer agent: triage, review, merges, releases).
 
-## Rules for agents writing tests in a fast_rspec project
+## Rules for agents writing tests in a fast_rspec project (target)
+
+These rules apply once the milestones below ship (M1–M7, `docs/idea/11-roadmap.md`); today only the scaffold exists.
 
 1. Write normal RSpec or Minitest. Same DSL, matchers, assertions, hooks, CLI flags, exit codes, output. Never `require` anything fast_rspec-specific in a spec/test.
-2. Don't add `rspec-*`, `minitest-reporters`, `parallel_tests`, `webmock`, `vcr`, `faker`, `database_cleaner*` or `simplecov` to the Gemfile — they're built in. Keep `shoulda-matchers`, `capybara`, `cuprite` if you use them; fast_rspec configures them.
-3. Don't write `test/support` / `spec/support` boilerplate for: FactoryBot syntax methods, WebMock `disable_net_connect!`, VCR cassette dir, shoulda `integrate`, Devise test helpers, time helpers, `parallelize(workers: :number_of_processors)`. It's automatic. If you do write it, yours wins.
-4. Tests run on all cores, each worker with its own DB, Redis DB, tmp dir and ports. Don't share state through files, class variables or ENV between tests. Fork-safety is ours; order-independence is yours.
-5. Reproduce a failure with the one-line command fast_rspec prints (seed + that worker's files).
+2. Don't add `rspec-*`, `minitest-reporters`, `parallel_tests`, `webmock`, `vcr`, `faker`, `database_cleaner*` or `simplecov` to the Gemfile — they are meant to be built in (M1–M6). Keep `shoulda-matchers`, `capybara`, `cuprite` if you use them; fast_rspec is planned to configure them (M5).
+3. Don't write `test/support` / `spec/support` boilerplate for: FactoryBot syntax methods, WebMock `disable_net_connect!`, VCR cassette dir, shoulda `integrate`, Devise test helpers, time helpers, `parallelize(workers: :number_of_processors)`. It is planned to be automatic (M4–M6). If you do write it, yours wins.
+4. Planned (M1, isolation M3): tests run on all cores, each worker with its own DB, Redis DB, tmp dir and ports. Don't share state through files, class variables or ENV between tests. Fork-safety is meant to be ours; order-independence is yours.
+5. Planned: reproduce a failure with the one-line command fast_rspec will print (seed + that worker's files).
 
-## Commands (M1–M2)
+## Commands (target)
 
-| Do | Command |
-|---|---|
-| Run everything (RSpec + Minitest) on all cores | `bundle exec fast_rspec` |
-| RSpec | `bundle exec rspec`, `rspec spec/x_spec.rb:12`, every upstream flag |
-| Minitest / Rails | `bin/rails test`, `bin/rails test test/x_test.rb:12`, `rake test` |
-| Serial | `-n 1` or `FAST_RSPEC_WORKERS=1` |
-| Fewer workers | `FAST_RSPEC_WORKERS=4` |
-| Pool | `FAST_RSPEC_POOL=fork\|thread\|spawn` (default: fork on CRuby, thread on JRuby/TruffleRuby) |
-| Coverage | `COVERAGE=1 <any command>` (merged across workers) |
-| Debug wiring | `FAST_RSPEC_DEBUG=1` (logs what was auto-configured) |
-| Force pure-Ruby twin | `FAST_RSPEC_DISABLE_EXT=1` |
+The commands below are the target contract. Today only the scaffold exists; `FAST_RSPEC_WORKERS`, `FAST_RSPEC_POOL` and `FAST_RSPEC_DISABLE_EXT` are the only env knobs read by `lib/`.
 
-## Configuration (optional)
+| Do | Command | Milestone |
+|---|---|---|
+| Run everything (RSpec + Minitest) on all cores | `bundle exec fast_rspec` | M1-M2 |
+| RSpec | `bundle exec rspec`, `rspec spec/x_spec.rb:12`, every upstream flag | M2 |
+| Minitest / Rails | `bin/rails test`, `bin/rails test test/x_test.rb:12`, `rake test` | M1, M3 |
+| Serial | `-n 1` or `FAST_RSPEC_WORKERS=1` | M1 |
+| Fewer workers | `FAST_RSPEC_WORKERS=4` | M1 |
+| Pool | `FAST_RSPEC_POOL=fork\|thread` (default: fork on CRuby, thread on JRuby/TruffleRuby); a `spawn` value is planned for M7 | M1, M7 |
+| Force pure-Ruby twin | `FAST_RSPEC_DISABLE_EXT=1` | exists in scaffold |
+
+## Configuration (optional, target)
 
 ```ruby
 # spec/spec_helper.rb or test/test_helper.rb — only if you need to change a default
@@ -38,9 +40,7 @@ FastRspec.configure do |c|
 end
 ```
 
-`FAST_RSPEC_DISABLE=vcr,capybara` does the same from the environment.
-
-## Batteries
+## Batteries (target)
 
 | Battery | API | Milestone | Default |
 |---|---|---|---|
@@ -54,11 +54,11 @@ end
 | FactoryBot | factory_bot 6.x | M6 (upstream wired until then) | definitions found, syntax methods included |
 | shoulda / Capybara / Cuprite / Devise / Sidekiq | upstream gems | M5 | auto-wired: integrate, ports, browsers, helpers, fake queues |
 
-## Pitfalls
+## Pitfalls (target)
 
 - `parallelize(workers: 1)` or `-n 1` disables parallelism; a hard-coded worker count in `test_helper.rb` is honored.
-- Tests that depend on run order fail under any seed; fast_rspec just exposes them faster. Use the printed repro and `fast_rspec bisect`.
-- JRuby/TruffleRuby thread pool: tests that stub process-global state (`stub_const`, `allow_any_instance_of`, `$stdout` swaps) run in the spawn pool automatically.
+- Tests that depend on run order fail under any seed; fast_rspec just exposes them faster. Use the printed one-line repro command (planned).
+- JRuby/TruffleRuby thread pool: the plan is that tests stubbing process-global state (`stub_const`, `allow_any_instance_of`, `$stdout` swaps) are routed to a separate process automatically (M7).
 - Upstream behavior differences, if any, are listed in `docs/idea/parity-divergences.md`. Report others as a "Compatibility gap" issue.
 
 ## Links
