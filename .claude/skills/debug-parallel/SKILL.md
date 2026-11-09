@@ -5,7 +5,7 @@ description: Debug a test that passes serially but fails (or flakes) under fast_
 
 # Debug parallel-only failures
 
-> The pool, runner and isolation layer are planned, not implemented yet (see `AGENTS.md`). Only `FAST_RSPEC_WORKERS` and `FAST_RSPEC_POOL` exist as config knobs today; this procedure is the target workflow.
+> The pool, runner and isolation layer are planned, not implemented yet (see `AGENTS.md`). `FAST_RSPEC_WORKERS`, `FAST_RSPEC_POOL` and `FAST_RSPEC_DISABLE_EXT` are the only env knobs read today; this procedure is the target workflow.
 
 ## 1. Classify
 ```bash
