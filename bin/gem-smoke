@@ -5,6 +5,12 @@ cd "$(dirname "$0")/../apps/fast-rspec"
 gem_file=$(ls -t pkg/fast_rspec-*.gem | head -1)
 home=$(mktemp -d)
 trap 'rm -rf "$home"' EXIT
-gem_path="$home:$(gem env gempath)"
-GEM_HOME="$home" GEM_PATH="$gem_path" gem install --no-document "$gem_file" >/dev/null
-GEM_HOME="$home" GEM_PATH="$gem_path" ruby -e 'require "fast_rspec"; puts "smoke ok: fast_rspec #{FastRspec::VERSION} (#{FastRspec::Render::IMPL.engine})"'
+unbundled() {
+  local variable
+  unset RUBYOPT
+  for variable in "${!BUNDLE_@}"; do unset "$variable"; done
+  "$@"
+}
+gem_path="$home:$(unbundled gem env gempath)"
+GEM_HOME="$home" GEM_PATH="$gem_path" unbundled gem install --no-document "$gem_file" >/dev/null
+GEM_HOME="$home" GEM_PATH="$gem_path" unbundled ruby -e 'require "fast_rspec"; puts "smoke ok: fast_rspec #{FastRspec::VERSION} (#{FastRspec::Render::IMPL.engine})"'
