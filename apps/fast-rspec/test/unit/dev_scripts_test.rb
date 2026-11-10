@@ -222,17 +222,24 @@ class RakeScriptTest < DevScriptFixtureTest
 end
 
 class GemSmokeScriptTest < DevScriptFixtureTest
+  def bundler_environment_guard
+    <<~BASH
+      [ -z "${RUBYOPT+x}" ] || exit 98
+      for variable in "${!BUNDLE_@}"; do exit 98; done
+    BASH
+  end
+
+  def bundler_guarded_stub(directory, name, body)
+    stub(directory, name, "#{bundler_environment_guard}#{body}")
+  end
+
   def gem_smoke_stubs(directory)
-    stub(directory, 'ls', <<~'BASH')
-      while [ "${1#-}" != "$1" ]; do shift; done
-      printf '%s\n' "$@"
-    BASH
-    stub(directory, 'head', <<~'BASH')
-      IFS= read -r first
-      printf '%s\n' "$first"
-    BASH
+    stub(directory, 'ls', %q(while [ "${1#-}" != "$1" ]; do shift; done; printf '%s\n' "$@"))
+    stub(directory, 'head', %q(IFS= read -r first; printf '%s\n' "$first"))
     stub(directory, 'mktemp', 'echo "$PWD/.smoke-home"')
     stub(directory, 'rm', 'exit 0')
+    bundler_guarded_stub(directory, 'gem', 'echo "system gem $*" >> "$SCRIPT_LOG"')
+    bundler_guarded_stub(directory, 'ruby', %q(echo "system ruby" >> "$SCRIPT_LOG"; printf '%s' "$TEST_ENGINE"))
   end
 
   def fake_built_gem
@@ -244,14 +251,23 @@ class GemSmokeScriptTest < DevScriptFixtureTest
     @environment.fetch('APP_DIR')
   end
 
+  def bundler_environment
+    { 'RUBYOPT' => '-rbundler/setup', 'BUNDLE_GEMFILE' => '/tmp/Gemfile',
+      'BUNDLE_WITHOUT' => 'development' }
+  end
+
+  def expected_gem_smoke_commands
+    [0, ['system gem env gempath', 'system gem install --no-document pkg/fast_rspec-0.0.1.gem',
+         'system ruby']]
+  end
+
   def test_gem_smoke_installs_the_built_gem_from_the_app_dir
     with_fixture do
+      @environment.merge!(bundler_environment)
       fake_built_gem
       gem_smoke_stubs(@environment.fetch('PATH'))
 
-      assert_equal [0, ['system gem env gempath',
-                        'system gem install --no-document pkg/fast_rspec-0.0.1.gem',
-                        'system ruby']], run_script('gem-smoke')
+      assert_equal expected_gem_smoke_commands, run_script('gem-smoke')
     end
   end
 end
