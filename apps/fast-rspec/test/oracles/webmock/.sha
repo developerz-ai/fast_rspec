@@ -1,4 +1,5 @@
-4273387030f7a3f498f9e4ac5f90f5dde8f68086
-# webmock/webmock master head - the repo carries NO release tags; latest
-# rubygems release at pin time is 3.34.0. Movable pin: re-point line 1 when
-# upstream moves; this oracle has no tag fallback.
+11392e455b9ee025b72cbebcaaa9e0a9f201bac0
+tag v3.34.0
+# bblimke/webmock v3.34.0 - the release docs/target pins (webmock 3.34.0). The
+# repo carries release tags, so line 2 is the fallback fetch ref; the old
+# webmock/webmock repo stopped in 2020 and never saw this release.

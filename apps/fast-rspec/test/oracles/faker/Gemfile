@@ -3,7 +3,7 @@
 source 'https://rubygems.org'
 
 gem 'faker', path: ENV.fetch('ORACLE_SRC')
-gem 'fast_rspec', path: File.expand_path('../..', __dir__)
+gem 'fast_rspec', path: File.expand_path('../../..', __dir__)
 gem 'rake'
 # faker's suite is test-unit/minitest at this pin (there is no spec/ dir), so
 # `bundle exec rake test` is the invocation. The Rakefile requires rubocop and

@@ -2,7 +2,7 @@
 
 source 'https://rubygems.org'
 
-gem 'fast_rspec', path: File.expand_path('../..', __dir__)
+gem 'fast_rspec', path: File.expand_path('../../..', __dir__)
 gem 'minitest', path: ENV.fetch('ORACLE_SRC')
 # minitest's Rakefile is a Hoe project; `bundle exec rake` needs hoe (whose
 # default task is :test) and the :seattlerb plugin the Rakefile loads. Hoe

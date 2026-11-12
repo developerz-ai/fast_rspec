@@ -7,44 +7,33 @@
 # printed as `ORACLE RESULT pass=<n> fail=<n> skip=<n>`; exiting without that
 # line makes the runner classify the run as a skip whose reason is this output.
 set -euo pipefail
-cd "$ORACLE_SRC"
+# rspec releases from its monorepo; the suite lives in its rspec-core/ dir.
+cd "$ORACLE_SRC/rspec-core"
 
+# The suite output is streamed into a log file while it runs: a suite the
+# runner kills on timeout leaves its partial output behind, so the skip reason
+# can say where the suite hung.
 suite_status=0
-output="$(bundle exec rspec 2>&1)" || suite_status=$?
-printf '%s\n' "$output"
+log="$(mktemp)"
+trap 'rm -f "$log"' EXIT
+bundle exec rspec 2>&1 | tee "$log" || suite_status=$?
 
-# rspec's totals line decides the counts; without one the suite never ran to
-# completion. The LAST totals line wins: rspec-core's own suite echoes
-# totals-line-shaped literals in failure output when it fails.
-# "12 examples, 0 failures" / "5 examples, 1 failure, 2 pending" /
+# The totals line decides the counts. One shared helper owns the parsing
+# (test/oracles/support/totals.rb) so the unit suite can pin it: rspec's
+# totals line is "12 examples, 0 failures" / "5 examples, 1 failure, 2 pending" /
 # "2 examples, 0 failures, 1 error occurred outside of examples" - errors
 # outside of examples (e.g. a spec file that failed to load) fold into
-# failures so silently missing specs never read as a pass.
-summary_re='([0-9]+) examples?, ([0-9]+) failures?(, ([0-9]+) pending?)?(, ([0-9]+) errors? occurred outside of examples)?'
-line=''
-examples=0
-failures=0
-pending=0
-rest=$output
-while [[ $rest =~ $summary_re ]]; do
-  line=${BASH_REMATCH[0]}
-  examples=${BASH_REMATCH[1]}
-  failures=${BASH_REMATCH[2]}
-  pending=${BASH_REMATCH[4]:-0}
-  failures=$((failures + ${BASH_REMATCH[6]:-0}))
-  rest=${rest#*"$line"}
-done
-
-if [[ -n $line ]]; then
-  if ((examples > 0)); then
-    printf 'ORACLE RESULT pass=%d fail=%d skip=%d\n' \
-      $((examples - failures - pending)) "$failures" "$pending"
-    exit 0
-  fi
-  printf 'oracle %s: suite completed with 0 examples - nothing executed\n' "${ORACLE_NAME:-?}"
-  exit 1
+# failures so silently missing specs never read as a pass. The LAST totals
+# line wins: rspec-core's own suite echoes totals-line-shaped literals in
+# failure output when it fails.
+# The helper is plain Ruby, so RUBYOPT is cleared: it must not run inside the
+# shadowed bundle.
+if RUBYOPT= ruby "$FAST_RSPEC_ROOT/test/oracles/support/totals.rb" \
+     --dialect rspec --oracle "${ORACLE_NAME:-?}" "$log"; then
+  exit 0
 fi
 
-# No summary line: the suite crashed before completing (load error, abort).
+# No totals line (the suite crashed before completing) or nothing executed:
+# the helper says why on stderr; exit with the suite's own status.
 ((suite_status > 0)) || suite_status=1
 exit "$suite_status"

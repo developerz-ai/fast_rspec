@@ -3,7 +3,7 @@
 source 'https://rubygems.org'
 
 gem 'factory_bot', path: ENV.fetch('ORACLE_SRC')
-gem 'fast_rspec', path: File.expand_path('../..', __dir__)
+gem 'fast_rspec', path: File.expand_path('../../..', __dir__)
 gem 'rake'
 # Bundler does not install a path gem's development dependencies, so the spec
 # suite's needs are listed here: rspec (ships the runner executable),

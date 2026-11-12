@@ -6,6 +6,7 @@ require 'json'
 require 'stringio'
 require 'tmpdir'
 require_relative '../oracles/support/runner'
+require_relative '../oracles/support/totals'
 
 # Offline coverage for the oracle runner: fake oracle dirs with `local <path>`
 # pins, stub bundle/version-control scripts on PATH, and the real
@@ -41,25 +42,68 @@ module OracleScripts
       echo "ORACLE_NAME=$ORACLE_NAME"
       echo "FAST_RSPEC_ROOT=$FAST_RSPEC_ROOT"
       echo "BUNDLE_GEMFILE=$BUNDLE_GEMFILE"
+      echo "BUNDLE_PATH=$BUNDLE_PATH"
+      echo "BUNDLER_SETUP=$BUNDLER_SETUP"
     } > "$RUN_ENV_LOG"
     echo "ORACLE RESULT pass=1 fail=0 skip=0"
   SH
+  # The runner usually starts under `bundle exec rake`: its RUBYOPT, BUNDLE_*
+  # and BUNDLER_* point at the app's own bundle and must not reach the child.
+  LEAKED_BUNDLE_ENV = {
+    'RUBYOPT' => '-rbundler/setup',
+    'BUNDLE_GEMFILE' => '/leaked/Gemfile',
+    'BUNDLE_PATH' => '/leaked/bundle',
+    'BUNDLER_SETUP' => '/leaked/bundler/setup'
+  }.freeze
+
   BUNDLE_STUB = <<~SH
     #!/bin/sh
-    printf '%s\n' "bundle $* BUNDLE_GEMFILE=$BUNDLE_GEMFILE" >> "$STUB_LOG"
+    printf '%s\n' "bundle $* BUNDLE_GEMFILE=$BUNDLE_GEMFILE RUBYOPT=$RUBYOPT BUNDLER_SETUP=$BUNDLER_SETUP" >> "$STUB_LOG"
     exit "${STUB_EXIT:-0}"
   SH
-  # Fakes a checkout: init stamps GIT_REV as the checked-out HEAD, rev-parse
-  # reads it back; every invocation is logged so tests can assert call counts.
+  # Fakes a checkout the way git does it: init creates the repo, fetch records
+  # the object the remote served in FETCH_HEAD, checkout moves the ref it was
+  # given to HEAD, rev-parse reads HEAD back - so the pin check sees what was
+  # actually checked out, not what the runner meant to fetch. Every invocation
+  # is logged so tests can assert call counts.
+  # GIT_EXIT fails every command, GIT_SHA_FETCH_FAILS fails only the sha fetch
+  # (the tag fallback still works), GIT_REV/GIT_TAG_REV are the shas the fake
+  # remote serves, GIT_CHECKOUT_REF forces the checkout of another commit.
   SCM_STUB = <<~SH
     #!/bin/sh
     printf '%s\\n' "scm $*" >> "$GIT_LOG"
     if [ "$1" = "-C" ]; then dir="$2"; shift 2; else dir="."; fi
+    if [ -n "${GIT_EXIT:-}" ] && [ "$GIT_EXIT" != "0" ]; then exit "$GIT_EXIT"; fi
     case "$1" in
-      init) target="${3:-$dir}"; mkdir -p "$target/.git"; echo "$GIT_REV" > "$target/.git/HEAD" ;;
+      init) target="${3:-$dir}"; mkdir -p "$target/.git" ;;
+      fetch)
+        ref=""
+        for arg in "$@"; do ref="$arg"; done
+        case "$ref" in
+          refs/tags/*)
+            [ "${GIT_TAG_FETCH_FAILS:-0}" = "1" ] && exit 1
+            printf '%s\\n' "${GIT_TAG_REV:-$GIT_REV}" > "$dir/.git/FETCH_HEAD"
+            ;;
+          *)
+            [ "${GIT_SHA_FETCH_FAILS:-0}" = "1" ] && exit 1
+            printf '%s\\n' "${GIT_REV:-$ref}" > "$dir/.git/FETCH_HEAD"
+            ;;
+        esac
+        ;;
+      checkout)
+        ref=""
+        for arg in "$@"; do ref="$arg"; done
+        if [ -n "${GIT_CHECKOUT_REF:-}" ]; then
+          printf '%s\\n' "$GIT_CHECKOUT_REF" > "$dir/.git/HEAD"
+        elif [ "$ref" = "FETCH_HEAD" ] && [ -f "$dir/.git/FETCH_HEAD" ]; then
+          cp "$dir/.git/FETCH_HEAD" "$dir/.git/HEAD"
+        else
+          printf '%s\\n' "$ref" > "$dir/.git/HEAD"
+        fi
+        ;;
       rev-parse) [ -f "$dir/.git/HEAD" ] && cat "$dir/.git/HEAD" ;;
     esac
-    exit "${GIT_EXIT:-0}"
+    exit 0
   SH
   SKIP_TXT = <<~TXT
     # <id> <reason> (<issue url>)
@@ -144,7 +188,30 @@ class OracleFixtureTest < Bootstrap::Test
       'GIT_LOG' => File.join(root, 'git.log'),
       'STUB_LOG' => File.join(root, 'bundle.log'),
       'ORACLE_TIMEOUT' => '10'
-    }
+    }.merge(LEAKED_BUNDLE_ENV)
+  end
+
+  # Runs the runner with the ENV object the Rakefile task uses, so the parent
+  # env reaches the child the way it does in a real `bundle exec rake` run.
+  def run_runner_with_env(root, overrides = {})
+    stubs = File.join(root, 'bin')
+    FileUtils.mkdir_p(stubs)
+    write_stub(stubs, 'bundle', BUNDLE_STUB)
+    write_stub(stubs, 'git', SCM_STUB)
+    with_env(base_env(root, stubs).merge(overrides)) do
+      io = StringIO.new
+      status = Oracles::Runner.new(root, io: io).run
+      rows = JSON.parse(File.read(File.join(root, 'tmp', 'oracles', 'results.json')))
+      [status, rows, io.string]
+    end
+  end
+
+  def with_env(values)
+    saved = values.keys.to_h { |key| [key, ENV.fetch(key, nil)] }
+    values.each { |key, value| ENV[key] = value }
+    yield
+  ensure
+    saved.each { |key, value| ENV[key] = value }
   end
 
   def fetch_count(root)
@@ -391,6 +458,53 @@ class OraclesRunnerTest < OracleFixtureTest
   end
 end
 
+# The checkout decides the pin: what the runner fetched is only half of it.
+class OracleFetchTest < OracleFixtureTest
+  def test_checkout_of_another_commit_skips
+    Dir.mktmpdir do |root|
+      build_oracle(root, 'minitest', sha: "#{SHA}\n", run: PASS_SCRIPT)
+
+      status, rows, _output = run_runner(root, env: { 'GIT_REV' => SHA, 'GIT_CHECKOUT_REF' => ALT_SHA })
+
+      assert_equal 0, status
+      assert_equal 'skip', rows[0]['verdict']
+      assert_includes rows[0]['reason'], "fetched HEAD #{ALT_SHA} does not match pin #{SHA}"
+    end
+  end
+
+  def test_tag_fallback_fetches_the_pin_when_the_sha_fetch_fails
+    Dir.mktmpdir do |root|
+      build_oracle(root, 'minitest', sha: "#{SHA}\ntag v5.27.0\n", run: PASS_SCRIPT)
+
+      status, rows, _output = run_runner(root, env: { 'GIT_SHA_FETCH_FAILS' => '1', 'GIT_TAG_REV' => SHA })
+
+      assert_equal 0, status
+      assert_equal 'pass', rows[0]['verdict']
+      assert_tag_fallback_fetches(root)
+    end
+  end
+
+  def test_moved_tag_that_does_not_match_the_pin_skips
+    Dir.mktmpdir do |root|
+      build_oracle(root, 'minitest', sha: "#{SHA}\ntag v5.27.0\n", run: PASS_SCRIPT)
+
+      _status, rows, _output = run_runner(root, env: { 'GIT_SHA_FETCH_FAILS' => '1', 'GIT_TAG_REV' => ALT_SHA })
+
+      assert_equal 'skip', rows[0]['verdict']
+      assert_includes rows[0]['reason'], "fetched HEAD #{ALT_SHA} does not match pin #{SHA}"
+      assert_tag_fallback_fetches(root)
+    end
+  end
+
+  def assert_tag_fallback_fetches(root)
+    fetches = File.readlines(File.join(root, 'git.log'), chomp: true).grep(/scm .*fetch/)
+
+    assert_equal 2, fetches.size
+    assert_includes fetches[0], SHA
+    assert_includes fetches[1], 'refs/tags/v5.27.0'
+  end
+end
+
 class OracleLifecycleTest < OracleFixtureTest
   def test_bundle_install_failure_skips
     Dir.mktmpdir do |root|
@@ -409,6 +523,18 @@ class OracleLifecycleTest < OracleFixtureTest
     overlay = File.join(root, 'test', 'oracles', 'faker', 'Gemfile')
 
     assert_includes File.read(File.join(root, 'bundle.log')), overlay
+  end
+
+  def test_the_install_step_does_not_inherit_the_parent_bundle_setup
+    Dir.mktmpdir do |root|
+      build_oracle(root, 'faker', sha: local_pin(root, 'faker'), run: PASS_SCRIPT)
+
+      run_runner(root)
+      log = File.read(File.join(root, 'bundle.log'))
+
+      refute_includes log, 'RUBYOPT=-rbundler/setup'
+      refute_includes log, 'BUNDLER_SETUP=/leaked/bundler/setup'
+    end
   end
 
   def test_timeout_expires_the_suite_and_skips
@@ -509,6 +635,21 @@ class OracleResultsTest < OracleFixtureTest
     assert_equal 'minitest', lines.fetch('ORACLE_NAME')
     assert_equal File.expand_path(root), lines.fetch('FAST_RSPEC_ROOT')
     assert_equal File.join(root, 'test', 'oracles', 'minitest', 'Gemfile'), lines.fetch('BUNDLE_GEMFILE')
+    assert_equal '', lines.fetch('BUNDLE_PATH')
+    assert_equal '', lines.fetch('BUNDLER_SETUP')
+  end
+
+  def test_the_env_object_of_the_rake_task_does_not_leak_into_the_child
+    Dir.mktmpdir do |root|
+      env_log = File.join(root, 'run-env.log')
+      build_oracle(root, 'minitest', sha: "#{SHA}\ntag v5.27.0\n", run: ENV_SCRIPT)
+
+      _status, rows, _output = run_runner_with_env(root, 'RUN_ENV_LOG' => env_log, 'GIT_REV' => SHA)
+      lines = File.readlines(env_log, chomp: true).to_h { |line| line.split('=', 2) }
+
+      assert_equal 'pass', rows[0]['verdict']
+      assert_contract_env(lines, root)
+    end
   end
 
   def test_skip_txt_entries_merge_into_matching_rows_only
@@ -556,5 +697,131 @@ class OracleResultsTest < OracleFixtureTest
       'verdict' => 'pass',
       'reason' => nil
     }
+  end
+end
+
+# The oracle run scripts parse the upstream suite's totals line through
+# test/oracles/support/totals.rb: the unit suite pins that parsing so a wrong
+# regex cannot ship unnoticed and turn a failing suite into a skip.
+class OraclesTotalsTest < Bootstrap::Test
+  def test_rspec_totals_line_counts
+    result = totals('12 examples, 0 failures')
+
+    assert_equal 12, result.passed
+    assert_equal 0, result.failed
+    assert_equal 0, result.skipped
+  end
+
+  def test_rspec_failures_and_pending_are_not_passes
+    result = totals('5 examples, 1 failure, 2 pending')
+
+    assert_equal 2, result.passed
+    assert_equal 1, result.failed
+    assert_equal 2, result.skipped
+  end
+
+  def test_errors_outside_of_examples_count_as_failures
+    result = totals('2 examples, 0 failures, 1 error occurred outside of examples')
+
+    assert_equal 1, result.passed
+    assert_equal 1, result.failed
+    assert_equal 0, result.skipped
+  end
+
+  def test_the_last_totals_line_wins
+    result = totals("12 examples, 0 failures\n3 examples, 1 failure")
+
+    assert_equal 2, result.passed
+    assert_equal 1, result.failed
+  end
+
+  def test_minitest_totals_line_counts
+    result = Oracles::Totals.parse('12 runs, 24 assertions, 2 failures, 1 errors, 3 skips', dialects: [:runs])
+
+    assert_equal 6, result.passed
+    assert_equal 3, result.failed
+    assert_equal 3, result.skipped
+  end
+
+  def test_test_unit_and_minitest_summaries_are_summed
+    text = "42 tests, 100 assertions, 0 failures, 0 errors, 0 skips\n" \
+           '0 runs, 0 assertions, 0 failures, 0 errors, 0 skips'
+    result = Oracles::Totals.parse(text, dialects: %i[runs tests], policy: :sum)
+
+    assert_equal 42, result.passed
+    assert_equal 0, result.failed
+    assert_equal 0, result.skipped
+  end
+
+  def test_the_first_dialect_with_a_totals_line_wins
+    text = "5 examples, 0 failures\n7 runs, 1 assertions, 0 failures, 0 errors, 0 skips"
+    result = Oracles::Totals.parse(text, dialects: %i[runs rspec])
+
+    assert_equal 7, result.passed
+  end
+
+  private
+
+  def totals(text) = Oracles::Totals.parse(text)
+end
+
+class OraclesTotalsCLITest < Bootstrap::Test
+  def test_the_command_line_prints_the_result_line
+    Dir.mktmpdir do |root|
+      out = StringIO.new
+      err = StringIO.new
+
+      status = cli(root, '12 examples, 0 failures', out: out, err: err)
+
+      assert_equal 0, status
+      assert_equal "ORACLE RESULT pass=12 fail=0 skip=0\n", out.string
+      assert_equal '', err.string
+    end
+  end
+
+  def test_the_command_line_reports_a_missing_totals_line
+    Dir.mktmpdir do |root|
+      out = StringIO.new
+      err = StringIO.new
+
+      status = cli(root, 'upstream boom', out: out, err: err)
+
+      assert_equal 1, status
+      assert_equal '', out.string
+      assert_includes err.string, 'no totals line'
+    end
+  end
+
+  def test_the_command_line_reports_a_suite_that_ran_nothing
+    Dir.mktmpdir do |root|
+      out = StringIO.new
+      err = StringIO.new
+
+      status = cli(root, '0 examples, 0 failures', out: out, err: err)
+
+      assert_equal 1, status
+      assert_equal '', out.string
+      assert_includes err.string, 'nothing executed'
+    end
+  end
+
+  def test_the_command_line_rejects_an_unknown_dialect
+    error = begin
+      Oracles::Totals::CLI.run(['--dialect', 'nope'], out: StringIO.new, err: StringIO.new)
+      nil
+    rescue ArgumentError => e
+      e
+    end
+
+    assert error, 'an unknown totals dialect must be rejected'
+    assert_includes error.message, 'unknown totals dialect'
+  end
+
+  private
+
+  def cli(root, output, out:, err:)
+    file = File.join(root, 'suite.log')
+    File.write(file, "#{output}\n")
+    Oracles::Totals::CLI.run(['--dialect', 'rspec', '--oracle', 'minitest', file], out: out, err: err)
   end
 end

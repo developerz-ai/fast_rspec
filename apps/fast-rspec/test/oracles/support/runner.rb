@@ -105,7 +105,11 @@ module Oracles
       [status.success?, "#{err}#{out}".strip]
     end
 
+    # The log may not exist at all: a spawn that never started (or a command
+    # that died before opening the log) leaves nothing to tail.
     def tail(path, limit = 200)
+      return '' unless File.exist?(path)
+
       File.readlines(path, chomp: true).reverse_each.find { |line| !line.empty? }.to_s[0, limit]
     end
 
@@ -275,18 +279,28 @@ module Oracles
           .reject { |line| line.empty? || line.start_with?('#') }
     end
 
-    # The runner usually starts under `bundle exec rake`, whose RUBYOPT/BUNDLE_*
-    # point at the app's own bundle: unset them so the overlay bundle stands
-    # alone. BUNDLE_GEMFILE is what `bundle exec` inside the run script needs to
-    # find the overlay; shadow adds the RUBYOPT preamble for the suite itself.
+    # The runner usually starts under `bundle exec rake`, whose RUBYOPT,
+    # BUNDLE_* and BUNDLER_* point at the app's own bundle: unset them so the
+    # overlay bundle stands alone. RubyGems requires ENV['BUNDLER_SETUP'] at
+    # startup (rubygems.rb), so a leaked one activates the app's bundle in
+    # every child - the install child then aborts before it installs anything,
+    # because the overlay bundle is not installed yet. BUNDLE_GEMFILE is what
+    # `bundle exec` inside the run script needs to find the overlay; shadow
+    # adds the RUBYOPT preamble for the suite itself.
     def child_env(src, shadow: false)
-      env = @env.to_h { |key, value| [key, key == 'RUBYOPT' || key.start_with?('BUNDLE_') ? nil : value] }
+      env = @env.each_with_object({}) do |(key, value), out|
+        out[key] = inherited_bundle_key?(key) ? nil : value
+      end
       env['RUBYOPT'] = RUBYOPT_PREFIX if shadow
       env['ORACLE_SRC'] = src
       env['FAST_RSPEC_ROOT'] = @root
       env['ORACLE_NAME'] = @name
       env['BUNDLE_GEMFILE'] = File.join(oracle_dir, 'Gemfile')
       env
+    end
+
+    def inherited_bundle_key?(key)
+      key == 'RUBYOPT' || key.start_with?('BUNDLE_') || key.start_with?('BUNDLER_')
     end
 
     def oracle_dir = File.join(@root, 'test', 'oracles', @name)
@@ -298,12 +312,16 @@ module Oracles
   # Row per suite. Exit status is 1 only when a suite ran and failed
   # un-skipped; skips (fetch, install, crash, timeout) never gate.
   class Runner
+    # rspec releases from its monorepo (github.com/rspec/rspec): the split
+    # repos are archived and stopped at 3.13.2/3.13.3, so the rspec oracles
+    # pin a monorepo tag (rspec-core-v3.13.6, ...) and run the component
+    # directory from that checkout.
     REMOTES = {
       'minitest' => 'minitest/minitest',
-      'rspec-core' => 'rspec/rspec-core',
-      'rspec-expectations' => 'rspec/rspec-expectations',
-      'rspec-mocks' => 'rspec/rspec-mocks',
-      'webmock' => 'webmock/webmock',
+      'rspec-core' => 'rspec/rspec',
+      'rspec-expectations' => 'rspec/rspec',
+      'rspec-mocks' => 'rspec/rspec',
+      'webmock' => 'bblimke/webmock',
       'vcr' => 'vcr/vcr',
       'faker' => 'faker-ruby/faker',
       'database_cleaner' => 'DatabaseCleaner/database_cleaner',

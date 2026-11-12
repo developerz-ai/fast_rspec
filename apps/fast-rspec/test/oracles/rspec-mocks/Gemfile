@@ -2,7 +2,12 @@
 
 source 'https://rubygems.org'
 
-gem 'fast_rspec', path: File.expand_path('../..', __dir__)
+gem 'fast_rspec', path: File.expand_path('../../..', __dir__)
 gem 'rake'
-gem 'rspec'
-gem 'rspec-mocks', path: ENV.fetch('ORACLE_SRC')
+# rspec releases from its monorepo (github.com/rspec/rspec), where every
+# component lives in its own directory: ORACLE_SRC is that checkout, pinned to
+# the commit in .sha.
+gem 'rspec-core', path: File.join(ENV.fetch('ORACLE_SRC'), 'rspec-core')
+gem 'rspec-expectations', path: File.join(ENV.fetch('ORACLE_SRC'), 'rspec-expectations')
+gem 'rspec-mocks', path: File.join(ENV.fetch('ORACLE_SRC'), 'rspec-mocks')
+gem 'rspec-support', path: File.join(ENV.fetch('ORACLE_SRC'), 'rspec-support')

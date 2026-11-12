@@ -2,7 +2,7 @@
 
 source 'https://rubygems.org'
 
-gem 'fast_rspec', path: File.expand_path('../..', __dir__)
+gem 'fast_rspec', path: File.expand_path('../../..', __dir__)
 gem 'rake'
 gem 'vcr', path: ENV.fetch('ORACLE_SRC')
 # spec/spec_helper.rb requires simplecov, pry and sinatra; the suite's

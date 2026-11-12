@@ -14,35 +14,32 @@
 set -euo pipefail
 cd "$ORACLE_SRC"
 
+# The suite output is streamed into a log file while it runs: a suite the
+# runner kills on timeout leaves its partial output behind, so the skip reason
+# can say where the suite hung.
 suite_status=0
-output="$(bundle exec rake test 2>&1)" || suite_status=$?
-printf '%s\n' "$output"
+log="$(mktemp)"
+trap 'rm -f "$log"' EXIT
+bundle exec rake test 2>&1 | tee "$log" || suite_status=$?
 
-# Suite summaries decide the counts; without one the suite never completed.
-# Both runners print a summary and both are real: the test cases inherit
-# Test::Unit::TestCase ("42 tests, ..."), while the also-autorun minitest
-# runner adds a trailing line ("0 runs, ...") for the classes it does not
-# own. Their totals are summed - last-line-wins would read the idle minitest
-# line as the suite's result (faker's own suite does not echo totals-shaped
-# literals; the single-runner oracles keep last-line-wins for that guard).
-summary_re='([0-9]+) (runs|tests), ([0-9]+) assertions, ([0-9]+) failures, ([0-9]+) errors, ([0-9]+) skips'
-runs=0
-failures=0
-errors=0
-skips=0
-rest=$output
-while [[ $rest =~ $summary_re ]]; do
-  runs=$((runs + BASH_REMATCH[1]))
-  failures=$((failures + BASH_REMATCH[4]))
-  errors=$((errors + BASH_REMATCH[5]))
-  skips=$((skips + BASH_REMATCH[6]))
-  rest=${rest#*"${BASH_REMATCH[0]}"}
-done
-
-if ((runs > 0)); then
-  printf 'ORACLE RESULT pass=%d fail=%d skip=%d\n' \
-    $((runs - failures - errors - skips)) $((failures + errors)) "$skips"
+# The totals line decides the counts. One shared helper owns the parsing
+# (test/oracles/support/totals.rb) so the unit suite can pin it. Both runners
+# print a summary and both are real: the test cases inherit
+# Test::Unit::TestCase ("42 tests, 100 assertions, 0 failures, 0 errors, 0
+# skips"), while the also-autorun minitest runner adds a trailing line ("0
+# runs, ...") for the classes it does not own. Their totals are summed:
+# last-line-wins would read the idle minitest line as the suite's result
+# (faker's own suite does not echo totals-shaped literals; the single-runner
+# oracles keep last-line-wins for that guard).
+# The helper is plain Ruby, so RUBYOPT is cleared: it must not run inside the
+# shadowed bundle.
+if RUBYOPT= ruby "$FAST_RSPEC_ROOT/test/oracles/support/totals.rb" \
+     --dialect runs --dialect tests --policy sum \
+     --oracle "${ORACLE_NAME:-?}" "$log"; then
   exit 0
 fi
-printf 'oracle %s: suite completed with 0 runs - nothing executed\n' "${ORACLE_NAME:-?}"
-exit 1
+
+# No totals line (the suite crashed before completing) or nothing executed:
+# the helper says why on stderr; exit with the suite's own status.
+((suite_status > 0)) || suite_status=1
+exit "$suite_status"
