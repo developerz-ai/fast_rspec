@@ -1,6 +1,6 @@
 # Compat target — Minitest 5/6 + Rails testing
 
-As of 2026-10. Sources read: `minitest-5.27.0`, `minitest-6.0.6`, `activesupport-8.1.4` / `7.2.3` / `8.0.5`, `railties-8.1.4` / `7.2.3`, `activerecord-8.1.4` / `7.2.3`, `actionpack-8.1.4`, `actioncable/actionmailer/activejob-8.1.4`.
+As of 2026-10. Sources read: `minitest-5.27.0`, `minitest-6.0.6`, `activesupport-8.1.4` / `7.2.3` / `8.0.5`, `railties-8.1.4` / `7.2.3`, `activerecord-8.1.4` / `7.2.3`, `actionpack-8.1.4`, `actioncable/actionmailer/activejob-8.1.4`. Minitest 6.1.0 (released 2026-11-06) reviewed 2026-11-11 via upstream `History.rdoc` + v6.1.0 `lib/minitest.rb` / `lib/minitest/test.rb` — see §0; `mt6/` citations below still point at the actually-read 6.0.6 tree.
 
 Path shorthands in citations:
 
@@ -15,6 +15,21 @@ Path shorthands in citations:
 | `rt72/` | `railties-7.2.3/lib/` |
 
 Gemspec floor everywhere: `minitest >= 5.1` (activesupport 7.2.3, 8.0.5, 8.1.4). **No upper bound** — Bundler will happily resolve Rails 7.2 + minitest 6, which is broken (see §6).
+
+---
+
+## 0. Changelog review — Minitest 6.1.0 (2026-11-06)
+
+Reviewed 2026-11-11 against upstream `History.rdoc` (6.1.0 section) and the v6.1.0 `lib/minitest.rb` / `lib/minitest/test.rb` sources. All changes additive or internal — **nothing in §5 (drop-in contract) changes.** The 6.0.6 pin stays: the cited code is identical in 6.1.0 except where noted below (`mt6/` line numbers drift in 6.1.0: +11 by `process_args` from the new `installed_at_exit?` method and `autorun` doco, +20 at `Minitest.run` after the `-W` validation branch).
+
+Surface deltas (verified against v6.1.0 source, paths from gem root):
+
+| Delta | v6.1.0 source | Impact on the target |
+|---|---|---|
+| NEW public API `Minitest::Test.abstract_test_case!(klass = self)` | `lib/minitest/test.rb:46` — class method that `extend`s the class with an anonymous module whose class-level `run(*args)` calls `super(*args)` **unless `self == klass`**: the abstract class itself runs nothing (no `prerecord`/`record`), subclasses run normally. Sits next to `i_suck_and_my_tests_are_order_dependent!` (`:58`) | Additive. Rebuilt frontend should provide it; engine/worker path unaffected (jobs are per-method on concrete classes) |
+| NEW public reader `Minitest.installed_at_exit?` | `lib/minitest.rb:96` returns `@@installed_at_exit` (init `:15`). Only the reader is new — the guard predates 6.1.0: pinned 6.0.6 already has `autorun` (`mt6/minitest.rb:69`, §1.1) install the `at_exit` block `unless @@installed_at_exit` (`:85`) and set it (`:86`); v6.1.0 moves them unchanged to `:72`/`:88`/`:90` | Additive. Our autoload entrypoint can probe `installed_at_exit?` instead of assuming single install |
+| `-W` unknown-category validation now `exit!`s | `process_args` `-W[<error>]` (`:232`): known category → `::Warning[s.to_sym] = true`; unknown → warns `Unknown warning category: %p` + known-category list, then bare `exit!` (`:245`) | Error-path behavior change, exit 1 before the run; our `process_args` twin must match |
+| Internal only: allow prism 2.0; `RegexpError` fix for metachar test names; PathExpander/Sprint absolute-path fix; Spec `ruby2_keywords` cleanup; doco | History.rdoc 6.1.0 | No public-surface impact |
 
 ---
 
