@@ -1,0 +1,9 @@
+# frozen_string_literal: true
+
+source 'https://rubygems.org'
+
+gem 'byebug'
+gem 'database_cleaner', path: ENV.fetch('ORACLE_SRC')
+gem 'fast_rspec', path: File.expand_path('../../..', __dir__)
+gem 'rake'
+gem 'rspec'

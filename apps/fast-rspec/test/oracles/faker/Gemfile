@@ -1,0 +1,18 @@
+# frozen_string_literal: true
+
+source 'https://rubygems.org'
+
+gem 'faker', path: ENV.fetch('ORACLE_SRC')
+gem 'fast_rspec', path: File.expand_path('../../..', __dir__)
+gem 'rake'
+# faker's suite is test-unit/minitest at this pin (there is no spec/ dir), so
+# `bundle exec rake test` is the invocation. The Rakefile requires rubocop and
+# yard at load even for that single task; test/test_helper.rb requires the
+# rest (simplecov + its JSON formatter, minitest, test-unit, timecop).
+gem 'minitest'
+gem 'rubocop'
+gem 'simplecov'
+gem 'simplecov-json_formatter'
+gem 'test-unit'
+gem 'timecop'
+gem 'yard'

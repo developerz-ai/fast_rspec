@@ -1,0 +1,45 @@
+#!/usr/bin/env bash
+# Oracle suite runner for faker: runs the upstream suite against fast_rspec's
+# compat shims. The runner injects ORACLE_SRC, FAST_RSPEC_ROOT, ORACLE_NAME,
+# BUNDLE_GEMFILE (this oracle's overlay Gemfile) and RUBYOPT=-rcompat_shadow;
+# run scripts never touch RUBYOPT or the bundle themselves.
+# faker migrated this suite to test-unit/minitest before v3.8.0 (there is no
+# spec/ dir; the Rakefile default is [test, rubocop]), so `rake test` - not
+# rspec - is the suite invocation. The Rakefile requires rubocop and yard at
+# load even for that one task; the overlay bundles them.
+# Once the suite completes, the counts parsed from the runners' summary lines
+# are printed as `ORACLE RESULT pass=<n> fail=<n> skip=<n>`; exiting without
+# that line makes the runner classify the run as a skip whose reason is this
+# output.
+set -euo pipefail
+cd "$ORACLE_SRC"
+
+# The suite output is streamed into a log file while it runs: a suite the
+# runner kills on timeout leaves its partial output behind, so the skip reason
+# can say where the suite hung.
+suite_status=0
+log="$(mktemp)"
+trap 'rm -f "$log"' EXIT
+bundle exec rake test 2>&1 | tee "$log" || suite_status=$?
+
+# The totals line decides the counts. One shared helper owns the parsing
+# (test/oracles/support/totals.rb) so the unit suite can pin it. Both runners
+# print a summary and both are real: the test cases inherit
+# Test::Unit::TestCase ("42 tests, 100 assertions, 0 failures, 0 errors, 0
+# skips"), while the also-autorun minitest runner adds a trailing line ("0
+# runs, ...") for the classes it does not own. Their totals are summed:
+# last-line-wins would read the idle minitest line as the suite's result
+# (faker's own suite does not echo totals-shaped literals; the single-runner
+# oracles keep last-line-wins for that guard).
+# The helper is plain Ruby, so RUBYOPT is cleared: it must not run inside the
+# shadowed bundle.
+if RUBYOPT= ruby "$FAST_RSPEC_ROOT/test/oracles/support/totals.rb" \
+     --dialect runs --dialect tests --policy sum \
+     --oracle "${ORACLE_NAME:-?}" "$log"; then
+  exit 0
+fi
+
+# No totals line (the suite crashed before completing) or nothing executed:
+# the helper says why on stderr; exit with the suite's own status.
+((suite_status > 0)) || suite_status=1
+exit "$suite_status"

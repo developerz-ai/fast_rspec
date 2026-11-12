@@ -1,0 +1,17 @@
+# frozen_string_literal: true
+
+source 'https://rubygems.org'
+
+gem 'fast_rspec', path: File.expand_path('../../..', __dir__)
+gem 'rake'
+gem 'webmock', path: ENV.fetch('ORACLE_SRC')
+# spec/spec_helper.rb requires these HTTP client libs up front, and
+# spec/support/webmock_server.rb serves its fixture over WEBrick (a bundled,
+# not default, gem on Ruby 3.x). A native build failing means the runner
+# classifies skip('install') with the reason - never a silent pass.
+gem 'curb'
+gem 'em-http-request'
+gem 'httpclient'
+gem 'patron'
+gem 'rspec'
+gem 'webrick'

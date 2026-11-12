@@ -1,0 +1,8 @@
+# Known-failing oracle runs for the database_cleaner suite.
+# Format: a bare `<id> <reason> (<issue url>)` line - a leading `#` marks a
+# comment, which the runner ignores; id is `<oracle>:<stage>` (stage is
+# fetch, install, run or timeout); the runner merges a matching entry into
+# that row's reason. Entries only ever shrink: one here marks an accepted
+# skip (documented in docs/idea/parity-divergences.md), never a gate.
+# Zero entries today: the upstream suite crashes at load until the fast_rspec
+# frontends land, so every failure is a real defect once suites run.

@@ -1,0 +1,6 @@
+712e3ca92458b1bbd28931604fac2bb15d304cd2
+tag rspec-mocks-v3.13.8
+# rspec/rspec rspec-mocks-v3.13.8 - the release docs/target pins (rspec-mocks
+# 3.13.8). rspec ships from its monorepo; the split rspec/rspec-mocks repo is
+# archived and stopped at v3.13.2, so the oracle pins the monorepo tag and
+# runs the rspec-mocks/ directory of that checkout.

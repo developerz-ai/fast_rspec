@@ -1,0 +1,6 @@
+4d8e9c3699dbc821b4603c3c01b6e81c85e3784c
+tag rspec-core-v3.13.6
+# rspec/rspec rspec-core-v3.13.6 - the release docs/target pins (rspec-core
+# 3.13.6). rspec ships from its monorepo; the split rspec/rspec-core repo is
+# archived and stopped at v3.13.2, so the oracle pins the monorepo tag and
+# runs the rspec-core/ directory of that checkout.

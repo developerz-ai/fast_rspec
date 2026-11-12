@@ -1,0 +1,5 @@
+11392e455b9ee025b72cbebcaaa9e0a9f201bac0
+tag v3.34.0
+# bblimke/webmock v3.34.0 - the release docs/target pins (webmock 3.34.0). The
+# repo carries release tags, so line 2 is the fallback fetch ref; the old
+# webmock/webmock repo stopped in 2020 and never saw this release.
