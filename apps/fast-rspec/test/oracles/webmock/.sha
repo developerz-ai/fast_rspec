@@ -1,0 +1,4 @@
+4273387030f7a3f498f9e4ac5f90f5dde8f68086
+# webmock/webmock master head - the repo carries NO release tags; latest
+# rubygems release at pin time is 3.34.0. Movable pin: re-point line 1 when
+# upstream moves; this oracle has no tag fallback.

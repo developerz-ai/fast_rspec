@@ -13,9 +13,10 @@ task :test do
 end
 
 namespace :test do
-  desc 'Run upstream suites (rspec-core, minitest, factory_bot, …) against FastRspec'
+  desc 'Run upstream suites (rspec-core, minitest, factory_bot, …) against FastRspec (ORACLE=<name> for one)'
   task :oracles do
-    abort 'test:oracles: not implemented yet — see docs/idea/09-compat-oracles.md'
+    require_relative 'test/oracles/support/runner'
+    exit Oracles::Runner.new(__dir__).run(ENV.fetch('ORACLE', nil))
   end
 
   desc 'Demo apps: RSpec + Minitest suites on the upstream and fast_rspec stacks (STRICT=1 fails on fast_rspec too)'

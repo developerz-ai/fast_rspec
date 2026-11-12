@@ -1,0 +1,4 @@
+0d6a02313cd5b3cc6f58edcd8b1a8f019cb6a4a0
+tag v3.13.2
+# rspec/rspec-mocks v3.13.2 - newest existing upstream tag; docs/target pins
+# 3.13.8, which has no upstream ref.

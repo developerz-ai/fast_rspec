@@ -1,0 +1,10 @@
+# frozen_string_literal: true
+
+source 'https://rubygems.org'
+
+gem 'aruba'
+gem 'fast_rspec', path: File.expand_path('../..', __dir__)
+gem 'rake'
+gem 'rspec-core', path: ENV.fetch('ORACLE_SRC')
+gem 'rspec-expectations'
+gem 'rspec-mocks'

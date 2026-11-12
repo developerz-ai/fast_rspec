@@ -1,0 +1,12 @@
+# frozen_string_literal: true
+
+source 'https://rubygems.org'
+
+gem 'fast_rspec', path: File.expand_path('../..', __dir__)
+gem 'minitest', path: ENV.fetch('ORACLE_SRC')
+# minitest's Rakefile is a Hoe project; `bundle exec rake` needs hoe (whose
+# default task is :test) and the :seattlerb plugin the Rakefile loads. Hoe
+# skips missing optional plugins with a warning, so nothing else is required.
+gem 'hoe'
+gem 'hoe-seattlerb'
+gem 'rake'

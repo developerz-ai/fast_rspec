@@ -1,0 +1,4 @@
+3bdf310e172836d28da49349f00e4747e6c29b05
+tag v3.13.2
+# rspec/rspec-core v3.13.2 - newest tag that exists upstream; docs/target pins
+# 3.13.6, which has no upstream ref, so do not "fix" this to a nonexistent tag.

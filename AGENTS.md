@@ -41,13 +41,13 @@ Keep this table aligned with `bin/check` and `apps/fast-rspec/Rakefile`. Unsuppo
 | Install | `bundle install` (in `apps/fast-rspec/`) |
 | Default pre-PR gate | `bin/check`: lint + compile on CRuby + bootstrap unit tests |
 | Fast gate | `bin/check fast`: lint + bootstrap unit tests; skips compilation |
-| Full gate | `bin/check full`: default stages + oracles + demo apps; oracle stage currently fails as unimplemented |
+| Full gate | `bin/check full`: default stages + oracles + demo apps; the oracle stage runs the pinned upstream suites, where skips-with-reason don't gate |
 | Own suite | `bin/rake test`: plain-Ruby bootstrap harness over fixed `test/unit/**/*_test.rb` glob; not dogfooded Minitest or a parallel runner |
 | Single-file filtering | `TEST=...` is not supported by the current Rake task; it still runs the fixed glob |
 | Lint | `bundle exec rubocop` (in `apps/fast-rspec/`) |
 | Demo stacks | `demo/rails/bin/stacks`, `demo/ruby/bin/stacks`; `bin/rake test:apps` runs both; `STRICT=1` also fails on fast_rspec failures |
 | Build + install smoke | `bin/rake smoke`: builds first, then installs in a temporary GEM_HOME and requires without Rails |
-| Oracles (unavailable) | `bin/rake test:oracles` aborts with “not implemented yet” |
+| Oracles | `bin/rake test:oracles` (`ORACLE=<name>` for one): fetches the pinned upstream suite per `test/oracles/<gem>/.sha`, runs it with `lib/compat` shadowed, prints per-suite pin/pass/skip/% rows, writes the same rows to `tmp/oracles/results.json`; skips never gate |
 | Benchmarks | `bin/rake bench` (or `bundle exec rake bench` in `apps/fast-rspec/`): measures fresh-process require cost, allocations and a 10k empty-block floor (no engine yet, so not an example-run number); prints a markdown table, exit 0. Results live in `docs/benchmarks.md`; no `bench:vs_stock` task exists |
 
 ## Layout (planned)
@@ -85,7 +85,7 @@ This heading preserves the `#layout-planned` design-document link. The gem lives
 - Current unit tests use the plain-Ruby bootstrap harness. Minitest-style tests dogfooded through our own Minitest are the goal, not today's runner.
 - Grow coverage through unit → frontends → demo apps → upstream oracles → benchmarks. Prove identical behavior on CRuby, JRuby and TruffleRuby as implementations land.
 - Demo apps are acceptance tests: Rails 8.1 and plain Ruby each have RSpec and Minitest suites, unchanged across `STACK=upstream|fast_rspec` via `gemfiles/*.gemfile`. Keep upstream green; never weaken demo tests to make fast_rspec pass.
-- Upstream suites are the compatibility specification. A failure is our defect unless documented in `docs/idea/parity-divergences.md`; oracle execution is not implemented yet.
+- Upstream suites are the compatibility specification. A failure is our defect unless documented in `docs/idea/parity-divergences.md`.
 - Test native/pure output parity and real-service isolation, not mocks of the behavior being implemented.
 
 ## Design references

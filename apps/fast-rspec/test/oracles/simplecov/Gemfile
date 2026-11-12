@@ -1,0 +1,8 @@
+# frozen_string_literal: true
+
+source 'https://rubygems.org'
+
+gem 'fast_rspec', path: File.expand_path('../..', __dir__)
+gem 'rake'
+gem 'rspec'
+gem 'simplecov', path: ENV.fetch('ORACLE_SRC')

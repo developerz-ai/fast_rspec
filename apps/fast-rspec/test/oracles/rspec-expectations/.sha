@@ -1,0 +1,4 @@
+555979f5bae76e83a52f166dd7060daf504c6177
+tag v3.13.3
+# rspec/rspec-expectations v3.13.3 - newest existing upstream tag; docs/target
+# pins 3.13.5, which has no upstream ref.

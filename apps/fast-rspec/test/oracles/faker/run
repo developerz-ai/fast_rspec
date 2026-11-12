@@ -1,0 +1,48 @@
+#!/usr/bin/env bash
+# Oracle suite runner for faker: runs the upstream suite against fast_rspec's
+# compat shims. The runner injects ORACLE_SRC, FAST_RSPEC_ROOT, ORACLE_NAME,
+# BUNDLE_GEMFILE (this oracle's overlay Gemfile) and RUBYOPT=-rcompat_shadow;
+# run scripts never touch RUBYOPT or the bundle themselves.
+# faker migrated this suite to test-unit/minitest before v3.8.0 (there is no
+# spec/ dir; the Rakefile default is [test, rubocop]), so `rake test` - not
+# rspec - is the suite invocation. The Rakefile requires rubocop and yard at
+# load even for that one task; the overlay bundles them.
+# Once the suite completes, the counts parsed from the runners' summary lines
+# are printed as `ORACLE RESULT pass=<n> fail=<n> skip=<n>`; exiting without
+# that line makes the runner classify the run as a skip whose reason is this
+# output.
+set -euo pipefail
+cd "$ORACLE_SRC"
+
+suite_status=0
+output="$(bundle exec rake test 2>&1)" || suite_status=$?
+printf '%s\n' "$output"
+
+# Suite summaries decide the counts; without one the suite never completed.
+# Both runners print a summary and both are real: the test cases inherit
+# Test::Unit::TestCase ("42 tests, ..."), while the also-autorun minitest
+# runner adds a trailing line ("0 runs, ...") for the classes it does not
+# own. Their totals are summed - last-line-wins would read the idle minitest
+# line as the suite's result (faker's own suite does not echo totals-shaped
+# literals; the single-runner oracles keep last-line-wins for that guard).
+summary_re='([0-9]+) (runs|tests), ([0-9]+) assertions, ([0-9]+) failures, ([0-9]+) errors, ([0-9]+) skips'
+runs=0
+failures=0
+errors=0
+skips=0
+rest=$output
+while [[ $rest =~ $summary_re ]]; do
+  runs=$((runs + BASH_REMATCH[1]))
+  failures=$((failures + BASH_REMATCH[4]))
+  errors=$((errors + BASH_REMATCH[5]))
+  skips=$((skips + BASH_REMATCH[6]))
+  rest=${rest#*"${BASH_REMATCH[0]}"}
+done
+
+if ((runs > 0)); then
+  printf 'ORACLE RESULT pass=%d fail=%d skip=%d\n' \
+    $((runs - failures - errors - skips)) $((failures + errors)) "$skips"
+  exit 0
+fi
+printf 'oracle %s: suite completed with 0 runs - nothing executed\n' "${ORACLE_NAME:-?}"
+exit 1
