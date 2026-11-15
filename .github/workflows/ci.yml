@@ -30,6 +30,14 @@ jobs:
       - uses: ruby/setup-ruby@v1
         with: { ruby-version: '3.4', bundler-cache: true }
       - run: bundle exec rubocop --parallel
+      - name: Public tree
+        env:
+          # The public-tree guard's private words (bin/check-public-tree). Required on this
+          # repository's own runs, where the secret exists; forks and Dependabot get none.
+          PUBLIC_TREE_PRIVATE_WORDS: ${{ secrets.PUBLIC_TREE_PRIVATE_WORDS }}
+          PUBLIC_TREE_PRIVATE_WORDS_REQUIRED: ${{ (github.event_name != 'pull_request' || github.event.pull_request.head.repo.full_name == github.repository) && github.actor != 'dependabot[bot]' && '1' || '' }}
+        working-directory: .
+        run: bash bin/check-public-tree --self-test && bash bin/check-public-tree
 
   test:
     name: Test / ${{ matrix.ruby }}

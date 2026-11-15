@@ -19,6 +19,7 @@ stage() {
 }
 
 stage lint bundle exec rubocop
+stage public-tree bash -c 'bash ../../bin/check-public-tree --self-test && bash ../../bin/check-public-tree'
 if [ "$MODE" != fast ]; then
   ENGINE="$(ruby -e 'print RUBY_ENGINE')"
   if [ "$ENGINE" = ruby ]; then
