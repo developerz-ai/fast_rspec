@@ -53,7 +53,7 @@ violations() {
         name=${name%.git}
         name=${name%%.}
         [[ $public_repos == *" $name "* ]] || hit=1
-    done < <(printf '%s' "$text" | grep -oiE "(github\.com/|^|[^A-Za-z0-9_./@-])${org}/[A-Za-z0-9_.-]+" | grep -oiE "${org}/[A-Za-z0-9_.-]+" || true)
+    done < <(printf '%s' "$text" | grep -oiE "(github\.com/|raw\.githubusercontent\.com/|api\.github\.com/repos/|^|[^A-Za-z0-9_./@-])${org}/[A-Za-z0-9_.-]+" | grep -oiE "${org}/[A-Za-z0-9_.-]+" || true)
     if [[ $hit -eq 1 ]] || grep -qiE "$tracker_re" <<< "$text"; then
         echo 'private repository'
     fi
@@ -89,6 +89,8 @@ if [[ ${1:-} == --self-test ]]; then
     expect 'private repository' "(${p1}#1026)"
     expect '' "${org}/gold-standards-in-ai#3, github.com/${org}/wurk"
     expect '' "*  @${org}/admin  (a team, not a repository)"
+    expect 'private repository' "https://raw.githubusercontent.com/${org}/vault/main/x"
+    expect 'private repository' "https://api.github.com/repos/${org}/vault"
     expect 'private word (from the secret)' "# runs on QUIMTEL" "quimtel,zorblax.io"
     expect '' "zorblax-io and quim" "quimtel,zorblax.io"
     # A match at the top of a file larger than a pipe buffer must still fire (no SIGPIPE under pipefail).
@@ -109,7 +111,7 @@ $big"
         echo 'check-public-tree self-test: ci.yml does not pass the secret and the required flag' >&2
         fails=$((fails + 1))
     fi
-    if [[ $fails -ne 0 ]]; then exit 1; fi
+    if [[ $fails -ne 0 ]]; then echo '  fix: bash bin/check-public-tree --self-test   # the failing fixture is named above' >&2; exit 1; fi
     echo 'check-public-tree self-test: every rule fires'
     exit 0
 fi
@@ -117,6 +119,7 @@ fi
 if [[ ! -s $words_file ]]; then
     if [[ ${PUBLIC_TREE_PRIVATE_WORDS_REQUIRED:-} == 1 ]]; then
         echo 'check-public-tree: PUBLIC_TREE_PRIVATE_WORDS is empty, and PUBLIC_TREE_PRIVATE_WORDS_REQUIRED=1 says this run must check the private words' >&2
+        echo '  fix: set the PUBLIC_TREE_PRIVATE_WORDS repository secret (an admin), or run without PUBLIC_TREE_PRIVATE_WORDS_REQUIRED locally' >&2
         exit 1
     fi
     echo 'check-public-tree: PUBLIC_TREE_PRIVATE_WORDS is unset, private words not checked' >&2
@@ -138,7 +141,13 @@ for path in "${files[@]}"; do
         printf '%s: %s\n' "$path" "$rule" >&2
         failures=$((failures + 1))
     done < <(violations "$(cat "$full")" "$words_file")
+    # The path is published too: a file named after a private word or repository is a finding.
+    while IFS= read -r rule; do
+        [[ -z $rule ]] && continue
+        printf '%s: %s (in the path)\n' "$path" "$rule" >&2
+        failures=$((failures + 1))
+    done < <(violations "$path" "$words_file")
 done
 echo "check-public-tree: read $read of ${#files[@]} tracked files, $(wc -l < "$words_file" | tr -d ' ') private words" >&2
 [[ $read -ge $min_tracked ]] || { echo "check-public-tree: read only $read tracked files" >&2; exit 1; }
-[[ $failures -eq 0 ]] || { echo "check-public-tree: $failures finding(s); rule per file, value withheld" >&2; exit 1; }
+[[ $failures -eq 0 ]] || { echo "check-public-tree: $failures finding(s); rule per file, value withheld" >&2; echo "  fix: remove the reference from each file named above, then: bash bin/check-public-tree" >&2; exit 1; }
