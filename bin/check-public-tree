@@ -16,7 +16,7 @@
 #   bin/check-public-tree [--self-test]
 set -euo pipefail
 
-repo_root=$(cd "$(dirname "$0")/.." && pwd)
+repo_root=$(cd "$(dirname "$0")/.." && pwd -P)
 self=bin/check-public-tree
 min_tracked=200
 domain_re='developerz\.ai'
