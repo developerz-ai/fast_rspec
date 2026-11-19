@@ -65,7 +65,7 @@ jobs:
     steps:
       - uses: actions/checkout@v7
       - uses: ruby/setup-ruby@v1
-        with: { ruby-version: '3.4', bundler-cache: true }
+        with: { ruby-version: '4.0', bundler-cache: true }
 
       - name: Verify
         run: bundle exec rake compile test smoke

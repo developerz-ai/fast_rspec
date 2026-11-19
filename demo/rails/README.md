@@ -46,7 +46,7 @@ BUNDLE_GEMFILE=gemfiles/upstream.gemfile bundle exec rspec spec/models
 `config/boot.rb` and `bin/rspec` map `STACK` to `BUNDLE_GEMFILE` (an explicit `BUNDLE_GEMFILE`
 wins). The root `Gemfile` just `eval_gemfile`s the chosen stack so a plain `bundle install` works.
 
-Needs Ruby 3.4, SQLite, and Chrome/Chromium for the one JS test (found on `PATH` or via
+Needs Ruby 4.0, SQLite, and Chrome/Chromium for the one JS test (found on `PATH` or via
 `BROWSER_PATH`; skipped cleanly when absent or `DEMO_JS=0`).
 
 ## Matrix (2026-10-31, 12 cores, Chrome present)

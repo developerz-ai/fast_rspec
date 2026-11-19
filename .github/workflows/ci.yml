@@ -28,7 +28,7 @@ jobs:
     steps:
       - uses: actions/checkout@v7
       - uses: ruby/setup-ruby@v1
-        with: { ruby-version: '3.4', bundler-cache: true }
+        with: { ruby-version: '4.0', bundler-cache: true }
       - run: bundle exec rubocop --parallel
       - name: Public tree
         env:
@@ -46,7 +46,7 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        ruby: ['3.2', '3.4', 'jruby', 'truffleruby']
+        ruby: ['3.2', '3.4', '4.0', 'jruby', 'truffleruby']
     steps:
       - uses: actions/checkout@v7
       - uses: ruby/setup-ruby@v1
@@ -65,7 +65,7 @@ jobs:
     steps:
       - uses: actions/checkout@v7
       - uses: ruby/setup-ruby@v1
-        with: { ruby-version: '3.4', bundler-cache: true }
+        with: { ruby-version: '4.0', bundler-cache: true }
       - run: bundle exec rake smoke
 
   demo:

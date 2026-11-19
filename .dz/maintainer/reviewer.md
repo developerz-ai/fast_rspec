@@ -8,7 +8,7 @@
 
 ## Stack
 
-Ruby >= 3.2 (development pin `3.4` in `mise.toml` and `apps/fast-rspec/.ruby-version`),
+Ruby >= 3.2 (development pin `4.0` in `mise.toml` and `apps/fast-rspec/.ruby-version`),
 Bundler, Rake, rake-compiler, a C extension (`apps/fast-rspec/ext/fast_rspec/`) with a
 pure-Ruby twin, RuboCop with the minitest/performance/rake plugins. The gem lives under
 `apps/fast-rspec/`. The gate is `bin/check` (lint, compile, unit, forced-PureRuby unit,
@@ -82,7 +82,7 @@ planned (`AGENTS.md` § Stack and status, `docs/idea/11-roadmap.md`).
 - Dead code, speculative abstractions or backwards-compat shims.
 - RuboCop `TargetRubyVersion` (`apps/fast-rspec/.rubocop.yml`) out of step with the
   gemspec's `required_ruby_version`.
-- An exact-patch Ruby pin (`3.4.7`) in `mise.toml` or `.ruby-version`: CI images only build
+- An exact-patch Ruby pin (`4.0.10`) in `mise.toml` or `.ruby-version`: CI images only build
   the latest patch per series.
 
 **Public tree and release**

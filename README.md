@@ -90,7 +90,7 @@ The gem lives in `apps/fast-rspec/`; the repository root holds the shared toolin
 
 ### Prerequisites and setup
 
-- Bash, Ruby and Bundler, plus access to RubyGems to install the development bundle. The gem requires Ruby >= 3.2; `mise.toml` and `apps/fast-rspec/.ruby-version` both select Ruby 3.4.
+- Bash, Ruby and Bundler, plus access to RubyGems to install the development bundle. The gem requires Ruby >= 3.2; `mise.toml` and `apps/fast-rspec/.ruby-version` both select Ruby 4.0.
 - With `mise` installed, setup installs and selects the configured toolchain. Without `mise`, setup uses the Ruby already on `PATH`; provide a supported Ruby and Bundler yourself.
 - CRuby needs a C compiler, make and Ruby development headers for the native extension. Setup's build-tool provisioning uses Debian/Ubuntu's `dpkg` and `apt-get`; if `build-essential` is missing, it requires passwordless `sudo` and package-repository access. This is not a portable OS provisioning script.
 
