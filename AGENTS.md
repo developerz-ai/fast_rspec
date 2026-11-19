@@ -23,7 +23,7 @@ Canonical guide for AI coding agents working on this repository.
 
 | Area | Current stack / intended contract |
 |---|---|
-| Runtime | Ruby >= 3.2; development pin Ruby 3.4 (`mise.toml`, `apps/fast-rspec/.ruby-version`); no runtime gem dependencies |
+| Runtime | Ruby >= 3.2; development pin Ruby 4.0 (`mise.toml`, `apps/fast-rspec/.ruby-version`); no runtime gem dependencies |
 | Tooling | Bundler, Rake, rake-compiler on CRuby, RuboCop with Minitest/performance/Rake plugins |
 | Existing scaffold | Configuration/autoload entrypoint, detection, conditional Railtie, native/pure rendering, bootstrap tests and CLI scaffold |
 | Planned frameworks | Clean RSpec + Minitest implementations on one engine, including `ActiveSupport::TestCase`; Rails 7.1+ |
@@ -77,7 +77,7 @@ This heading preserves the `#layout-planned` design-document link. The gem lives
 - Before wiring anything, check for user configuration. Log automatic wiring at `FAST_RSPEC_DEBUG=1`.
 - Use frozen string literals everywhere. Comments explain non-obvious reasons, not the code itself.
 - Minimize allocations/syscalls in scheduler/reporter loops: one IPC message per file, not per example; no per-test process spawn.
-- Pin the Ruby series, not an exact patch (`3.4`, not `3.4.7`) in `mise.toml` and `apps/fast-rspec/.ruby-version`: CI runner images build only the latest patch of each series, so an exact-patch pin 404s in `ruby/setup-ruby`.
+- Pin the Ruby series, not an exact patch (`4.0`, not `4.0.10`) in `mise.toml` and `apps/fast-rspec/.ruby-version`: CI runner images build only the latest patch of each series, so an exact-patch pin 404s in `ruby/setup-ruby`.
 - C sources include `<stdbool.h>` before `<ruby.h>`: Ruby 3.2's `ruby/internal/stdbool.h` defines `bool` only when the installed `ruby/config.h` carries `HAVE_STDBOOL_H` (3.3+ includes the header itself), so the 3.2 floor needs it explicitly.
 
 ## Testing rules

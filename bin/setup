@@ -9,7 +9,7 @@ if ! dpkg -s build-essential >/dev/null 2>&1; then
   sudo -n apt-get update && sudo -n apt-get install -y --no-install-recommends build-essential
 fi
 
-# Ruby comes from mise (mise.toml pins 3.4); a box without mise keeps the system Ruby.
+# Ruby comes from mise (mise.toml pins 4.0); a box without mise keeps the system Ruby.
 if command -v mise >/dev/null 2>&1; then
   mise install
   mise_env="$(mise env --shell bash)"
