@@ -433,7 +433,7 @@ class OraclesRunnerTest < OracleFixtureTest
     assert_equal 'blocked', row['verdict']
     assert_includes row['reason'], 'no ORACLE RESULT after exit 1'
     assert_includes row['reason'], 'upstream boom'
-    assert_equal [nil], [row['upstream_exit']]
+    assert_equal 1, row['upstream_exit']
   end
 
   def test_all_blocked_runs_return_two
@@ -489,6 +489,17 @@ end
 # Verdict and exit-status regressions live in their own class to keep the
 # matrix tests focused and the class size bounded.
 class OraclesVerdictTest < OracleFixtureTest
+  # A passing fixture must carry a real compat adapter, otherwise the runner's
+  # placeholder probe would (correctly) refuse to call it completed.
+  def build_completed(root, name, run: PASS_SCRIPT)
+    dir = build_oracle(root, name, sha: local_pin(root, name), run: run)
+    compat_dir = File.join(root, 'lib', 'compat')
+    FileUtils.mkdir_p(compat_dir)
+    File.write(File.join(compat_dir, "#{name}.rb"),
+               "# frozen_string_literal: true\nrequire 'fast_rspec'\nFastRspec.install(name: '#{name}')\n")
+    dir
+  end
+
   def test_placeholder_checkouts_are_blocked_not_counted_as_completed
     Dir.mktmpdir do |root|
       build_placeholder(root, 'fake')
@@ -501,8 +512,11 @@ class OraclesVerdictTest < OracleFixtureTest
   def assert_placeholder_blocked(status, row, output)
     assert_equal 2, status
     assert_equal 'blocked', row['verdict']
-    assert_includes row['reason'], 'upstream totals'
-    assert_equal 3, row['pass']
+    # The adapter exists but only requires fast_rspec: the probe must resolve
+    # the real fixture, not a nonexistent file, to reach this reason.
+    assert_equal 'compat adapter lib/compat/fake.rb is an inert placeholder, not a compatibility ' \
+                 'implementation; upstream exit 0; upstream totals pass=3, fail=0, skip=0', row['reason']
+    assert_equal({ 'verdict' => 'blocked', 'pass' => 3, 'pct' => nil }, row.slice('verdict', 'pass', 'pct'))
     assert_includes output, 'completed=0'
   end
 
@@ -520,13 +534,14 @@ class OraclesVerdictTest < OracleFixtureTest
     assert_equal 0, status
     assert_equal 'skip', row['verdict']
     assert_includes row['reason'], 'suite unavailable'
+    assert_equal({ 'verdict' => 'skip', 'pct' => nil }, row.slice('verdict', 'pct'))
     assert_includes output, 'completed=0'
     assert_includes output, 'skip=1'
   end
 
   def test_successful_completion_returns_zero_and_counts_completed
     Dir.mktmpdir do |root|
-      build_oracle(root, 'alpha', sha: local_pin(root, 'alpha'), run: PASS_SCRIPT)
+      build_completed(root, 'alpha')
       status, rows, output = run_runner(root)
 
       assert_completed_pass(status, rows[0], output)
@@ -543,7 +558,7 @@ class OraclesVerdictTest < OracleFixtureTest
 
   def test_non_zero_upstream_exit_with_accepted_totals_is_a_failure
     Dir.mktmpdir do |root|
-      build_oracle(root, 'alpha', sha: local_pin(root, 'alpha'), run: FAILED_WITH_TOTALS_SCRIPT)
+      build_completed(root, 'alpha', run: FAILED_WITH_TOTALS_SCRIPT)
       status, rows, _output = run_runner(root)
 
       assert_failed_upstream_exit(status, rows[0])
@@ -561,7 +576,7 @@ class OraclesVerdictTest < OracleFixtureTest
 
   def test_a_completed_suite_reports_blocked_runs_in_the_summary
     Dir.mktmpdir do |root|
-      build_oracle(root, 'alpha', sha: local_pin(root, 'alpha'), run: PASS_SCRIPT)
+      build_completed(root, 'alpha')
       build_oracle(root, 'fake', sha: local_pin(root, 'fake'), run: CRASH_SCRIPT)
       status, rows, output = run_runner(root)
 
@@ -794,6 +809,9 @@ class OracleResultsTest < OracleFixtureTest
   def test_results_json_mirrors_the_docs_compat_columns
     Dir.mktmpdir do |root|
       build_oracle(root, 'alpha', sha: local_pin(root, 'alpha'), run: PASS_SCRIPT)
+      compat_dir = File.join(root, 'lib', 'compat')
+      FileUtils.mkdir_p(compat_dir)
+      File.write(File.join(compat_dir, 'alpha.rb'), "# frozen_string_literal: true\nFastRspec.install(name: 'alpha')\n")
 
       status, rows, output = run_runner(root)
 
@@ -878,6 +896,88 @@ class OraclesTotalsTest < Bootstrap::Test
   private
 
   def totals(text) = Oracles::Totals.parse(text)
+end
+
+# The shell wrappers are the contract between a suite and the runner's
+# upstream_exit. Exercise the checked-in scripts with a stubbed bundle and
+# totals helper so a wrapper that swallows a suite failure, or returns 0 when
+# no totals line was parsed, fails here.
+class OracleLauncherExitTest < OracleFixtureTest
+  LAUNCHERS = %w[database_cleaner factory_bot faker minitest rspec-core rspec-expectations rspec-mocks
+                 simplecov vcr webmock].freeze
+
+  # Compare a name-keyed map so a failure identifies the offending launcher.
+  def launcher_statuses(root, suite_exit:, totals_exit:)
+    LAUNCHERS.to_h do |name|
+      [name, launcher_status(root, name, suite_exit: suite_exit, totals_exit: totals_exit)]
+    end
+  end
+
+  def test_suite_failure_is_preserved_when_totals_parse
+    Dir.mktmpdir do |root|
+      statuses = launcher_statuses(root, suite_exit: 2, totals_exit: 0)
+
+      assert_equal LAUNCHERS.to_h { |name| [name, 2] }, statuses
+    end
+  end
+
+  def test_totals_parse_failure_is_not_reported_as_success
+    Dir.mktmpdir do |root|
+      statuses = launcher_statuses(root, suite_exit: 0, totals_exit: 1)
+
+      assert_equal LAUNCHERS.to_h { |name| [name, 1] }, statuses
+    end
+  end
+
+  def test_a_clean_suite_and_totals_parse_return_zero
+    Dir.mktmpdir do |root|
+      statuses = launcher_statuses(root, suite_exit: 0, totals_exit: 0)
+
+      assert_equal LAUNCHERS.to_h { |name| [name, 0] }, statuses
+    end
+  end
+
+  private
+
+  def launcher_status(root, name, suite_exit:, totals_exit:)
+    bin = launcher_bin(root, suite_exit, totals_exit)
+    src = File.join(root, 'src', name)
+    FileUtils.mkdir_p(src)
+    launcher = File.join(real_root, 'oracles', name, 'run')
+    Dir.chdir(src) do
+      _out, _err, status = Open3.capture3(launcher_env(root, bin, name), 'bash', launcher)
+      status.exitstatus
+    end
+  end
+
+  def launcher_bin(root, suite_exit, totals_exit)
+    bin = File.join(root, 'bin')
+    FileUtils.mkdir_p(bin)
+    write_stub(bin, 'bundle', "#!/bin/sh\nexit #{suite_exit}\n")
+    write_stub(bin, 'ruby', "#!/bin/sh\nexit #{totals_exit}\n")
+    bin
+  end
+
+  def real_root = File.expand_path('..', __dir__)
+
+  def launcher_env(root, bin, name)
+    {
+      'PATH' => "#{bin}:/usr/bin:/bin",
+      'FAST_RSPEC_ROOT' => real_root,
+      'ORACLE_SRC' => File.join(root, 'src'),
+      'ORACLE_NAME' => name
+    }.merge(bundle_env(root, bin))
+  end
+
+  def bundle_env(root, _bin)
+    {
+      'BUNDLE_GEMFILE' => File.join(root, 'Gemfile'),
+      'BUNDLE_PATH' => File.join(root, 'bundle'),
+      'BUNDLER_SETUP' => File.join(root, 'bundler', 'setup'),
+      'STUB_LOG' => File.join(root, 'bundle.log'),
+      'RUBYOPT' => ''
+    }
+  end
 end
 
 class OraclesTotalsCLITest < Bootstrap::Test

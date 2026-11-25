@@ -320,7 +320,8 @@ module Oracles
       return unavailable_row('timeout', "run timed out after #{@timeout}s (#{log})") if status == :timeout
 
       unless counts
-        return unavailable_row('run', "no ORACLE RESULT after exit #{status.exitstatus}: #{Shell.tail(log)}")
+        return unavailable_row('run', "no ORACLE RESULT after exit #{status.exitstatus}: #{Shell.tail(log)}",
+                               upstream_exit: status.exitstatus)
       end
 
       counted_row(counts, status, status.exitstatus)
@@ -354,18 +355,22 @@ module Oracles
       pass = counts.fetch(:pass)
       fail = counts.fetch(:fail)
       skip = counts.fetch(:skip)
-      total = pass + fail + skip
-      pct = total.zero? ? 0 : (pass * 100.0 / total).round
+      verdict = counts.fetch(:verdict)
+      # Only a completed run has a meaningful pass rate. Blocked/skipped rows
+      # keep their raw counts for diagnosis, but a rate there would claim
+      # compatibility evidence the run never produced.
+      pct = COMPLETED_VERDICTS.include?(verdict) ? (pass * 100.0 / (pass + fail + skip)).round : nil
       attrs = counts.merge(name: @name, pin: @pin.sha, pct: pct)
       Row.new(**attrs)
     end
 
     # Only an explicit skip.txt entry makes an unavailable run non-gating.
     # Everything else is blocked and cannot be read as compatibility proof.
-    def unavailable_row(stage, reason)
+    def unavailable_row(stage, reason, upstream_exit: nil)
       documented = documented_skip("#{@name}:#{stage}")
       reason = "#{reason} — documented: #{documented}" if documented
-      row(pass: 0, fail: 0, skip: 0, verdict: documented ? SKIP : BLOCKED, reason: reason)
+      row(pass: 0, fail: 0, skip: 0, verdict: documented ? SKIP : BLOCKED, reason: reason,
+          upstream_exit: upstream_exit)
     end
 
     # skip.txt documents accepted skips as `<id> <reason> (<issue url>)`; a
@@ -518,11 +523,18 @@ module Oracles
     end
 
     def table_row(row)
-      values = [row.name, row.pin, row.pass, row.fail, row.skip, "#{row.pct}%", row.verdict, row.reason.to_s]
-      cells = TABLE.zip(values).map do |(_title, width, pad), value|
+      cells = TABLE.zip(row_values(row)).map do |(_title, width, pad), value|
         pad ? value.to_s.public_send(pad, width) : value.to_s
       end
       cells.join(' ')
     end
+
+    def row_values(row)
+      [row.name, row.pin, row.pass, row.fail, row.skip, rate(row), row.verdict, row.reason.to_s]
+    end
+
+    # Blocked and skipped rows have no pass rate; an em dash says so without
+    # claiming the 0% that would look like a completed, failing run.
+    def rate(row) = row.pct ? "#{row.pct}%" : '—'
   end
 end
