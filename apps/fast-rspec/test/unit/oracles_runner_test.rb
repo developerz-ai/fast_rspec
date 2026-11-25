@@ -21,6 +21,17 @@ module OracleScripts
     #!/bin/sh
     echo "ORACLE RESULT pass=3 fail=0 skip=0"
   SH
+  # A suite that fails but still prints a clean totals line: the runner must use
+  # this exit status, not the parsed counts, to decide whether it passed.
+  FAILED_WITH_TOTALS_SCRIPT = <<~SH
+    #!/bin/sh
+    echo "ORACLE RESULT pass=3 fail=0 skip=0"
+    exit 2
+  SH
+  PLACEHOLDER_SCRIPT = <<~SH
+    #!/bin/sh
+    echo "ORACLE RESULT pass=3 fail=0 skip=0"
+  SH
   FAIL_SCRIPT = <<~SH
     #!/bin/sh
     echo "ORACLE RESULT pass=1 fail=2 skip=1"
@@ -160,6 +171,18 @@ class OracleFixtureTest < Bootstrap::Test
     File.chmod(0o700, File.join(dir, 'run'))
     File.write(File.join(dir, 'skip.txt'), skip_txt)
     dir
+  end
+
+  # A bare checkout with only the required files: no upstream spec suite. The
+  # runner must detect the placeholder and refuse to report it as a real run.
+  def build_placeholder(root, name, run: PLACEHOLDER_SCRIPT)
+    stub_dir = File.join(root, 'src', name)
+    FileUtils.mkdir_p(stub_dir)
+    compat_dir = File.join(root, 'lib', 'compat')
+    FileUtils.mkdir_p(compat_dir)
+    File.write(File.join(compat_dir, "#{name}.rb"), "# frozen_string_literal: true\nrequire 'fast_rspec'\n")
+    File.write(File.join(stub_dir, 'README.md'), "# upstream #{name}\n")
+    build_oracle(root, name, sha: "local #{stub_dir}\n", run: run)
   end
 
   # Returns [exit-status, parsed results.json rows, runner output].
@@ -370,7 +393,7 @@ class OracleGuardsTest < OracleFixtureTest
 end
 
 class OraclesRunnerTest < OracleFixtureTest
-  def test_classification_matrix_pass_fail_and_crash_skip
+  def test_classification_matrix_pass_fail_and_crash_blocked
     Dir.mktmpdir do |root|
       build_oracle(root, 'alpha', sha: local_pin(root, 'alpha'), run: PASS_SCRIPT)
       build_oracle(root, 'beta', sha: local_pin(root, 'beta'), run: FAIL_SCRIPT)
@@ -384,50 +407,55 @@ class OraclesRunnerTest < OracleFixtureTest
   end
 
   def assert_matrix(by_name, status)
+    # A completed failing suite gates with 1; the blocked crash does not add
+    # its own status because at least one suite completed.
     assert_equal 1, status
     assert_pass_row(by_name.fetch('alpha'))
     assert_fail_row(by_name.fetch('beta'))
-    assert_crash_row(by_name.fetch('gamma'))
+    assert_crash_blocked_row(by_name.fetch('gamma'))
   end
 
   def assert_pass_row(row)
     assert_equal 'pass', row['verdict']
     assert_equal 100, row['pct']
+    assert_equal 0, row['upstream_exit']
     refute(row['reason'], 'a passing row has no reason')
   end
 
   def assert_fail_row(row)
     assert_equal 'fail', row['verdict']
     assert_equal 25, row['pct']
+    assert_equal 0, row['upstream_exit']
     assert_equal '2 failure(s)', row['reason']
   end
 
-  def assert_crash_row(row)
-    assert_equal 'skip', row['verdict']
+  def assert_crash_blocked_row(row)
+    assert_equal 'blocked', row['verdict']
     assert_includes row['reason'], 'no ORACLE RESULT after exit 1'
     assert_includes row['reason'], 'upstream boom'
+    assert_equal [nil], [row['upstream_exit']]
   end
 
-  def test_skips_never_gate_the_exit_status
+  def test_all_blocked_runs_return_two
     Dir.mktmpdir do |root|
       build_oracle(root, 'gamma', sha: local_pin(root, 'gamma'), run: CRASH_SCRIPT)
 
       status, rows, _output = run_runner(root)
 
-      assert_equal 0, status
-      assert_equal 'skip', rows[0]['verdict']
+      assert_equal 2, status
+      assert_equal 'blocked', rows[0]['verdict']
     end
   end
 
-  def test_fetch_failure_skips_and_falls_back_to_the_tag_ref
+  def test_fetch_failure_blocks_and_falls_back_to_the_tag_ref
     Dir.mktmpdir do |root|
       build_oracle(root, 'minitest', sha: "#{SHA}\ntag v5.27.0\n", run: PASS_SCRIPT)
 
       status, rows, _output = run_runner(root, env: { 'GIT_EXIT' => '1' })
       row = rows[0]
 
-      assert_equal 0, status
-      assert_equal 'skip', row['verdict']
+      assert_equal 2, status
+      assert_equal 'blocked', row['verdict']
       assert_tag_fallback(root, row)
     end
   end
@@ -445,29 +473,121 @@ class OraclesRunnerTest < OracleFixtureTest
     assert_includes fetches[1], 'refs/tags/v5.27.0'
   end
 
-  def test_fetched_head_mismatching_the_pin_skips
+  def test_fetched_head_mismatching_the_pin_blocks
     Dir.mktmpdir do |root|
       build_oracle(root, 'minitest', sha: "#{SHA}\n", run: PASS_SCRIPT)
 
       status, rows, _output = run_runner(root, env: { 'GIT_REV' => ALT_SHA })
 
-      assert_equal 0, status
-      assert_equal 'skip', rows[0]['verdict']
+      assert_equal 2, status
+      assert_equal 'blocked', rows[0]['verdict']
       assert_includes rows[0]['reason'], "fetched HEAD #{ALT_SHA} does not match pin #{SHA}"
     end
   end
 end
 
+# Verdict and exit-status regressions live in their own class to keep the
+# matrix tests focused and the class size bounded.
+class OraclesVerdictTest < OracleFixtureTest
+  def test_placeholder_checkouts_are_blocked_not_counted_as_completed
+    Dir.mktmpdir do |root|
+      build_placeholder(root, 'fake')
+      status, rows, output = run_runner(root, env: { 'FAST_RSPEC_ROOT' => root })
+
+      assert_placeholder_blocked(status, rows[0], output)
+    end
+  end
+
+  def assert_placeholder_blocked(status, row, output)
+    assert_equal 2, status
+    assert_equal 'blocked', row['verdict']
+    assert_includes row['reason'], 'upstream totals'
+    assert_equal 3, row['pass']
+    assert_includes output, 'completed=0'
+  end
+
+  def test_all_skipped_runs_return_zero_with_no_completed_suite
+    Dir.mktmpdir do |root|
+      skip_txt = "# documented skips\ngamma:run suite unavailable (https://example.com/issue/1)\n"
+      build_oracle(root, 'gamma', sha: local_pin(root, 'gamma'), run: CRASH_SCRIPT, skip_txt: skip_txt)
+      status, rows, output = run_runner(root)
+
+      assert_documented_skip(status, rows[0], output)
+    end
+  end
+
+  def assert_documented_skip(status, row, output)
+    assert_equal 0, status
+    assert_equal 'skip', row['verdict']
+    assert_includes row['reason'], 'suite unavailable'
+    assert_includes output, 'completed=0'
+    assert_includes output, 'skip=1'
+  end
+
+  def test_successful_completion_returns_zero_and_counts_completed
+    Dir.mktmpdir do |root|
+      build_oracle(root, 'alpha', sha: local_pin(root, 'alpha'), run: PASS_SCRIPT)
+      status, rows, output = run_runner(root)
+
+      assert_completed_pass(status, rows[0], output)
+    end
+  end
+
+  def assert_completed_pass(status, row, output)
+    assert_equal 0, status
+    assert_equal 'pass', row['verdict']
+    assert_equal 0, row['upstream_exit']
+    assert_includes output, 'completed=1'
+    assert_includes output, 'suites →'
+  end
+
+  def test_non_zero_upstream_exit_with_accepted_totals_is_a_failure
+    Dir.mktmpdir do |root|
+      build_oracle(root, 'alpha', sha: local_pin(root, 'alpha'), run: FAILED_WITH_TOTALS_SCRIPT)
+      status, rows, _output = run_runner(root)
+
+      assert_failed_upstream_exit(status, rows[0])
+    end
+  end
+
+  def assert_failed_upstream_exit(status, row)
+    assert_equal 1, status
+    assert_equal 'fail', row['verdict']
+    assert_equal 2, row['upstream_exit']
+    assert_equal 3, row['pass']
+    assert_equal 0, row['fail']
+    assert_includes row['reason'], 'exit 2'
+  end
+
+  def test_a_completed_suite_reports_blocked_runs_in_the_summary
+    Dir.mktmpdir do |root|
+      build_oracle(root, 'alpha', sha: local_pin(root, 'alpha'), run: PASS_SCRIPT)
+      build_oracle(root, 'fake', sha: local_pin(root, 'fake'), run: CRASH_SCRIPT)
+      status, rows, output = run_runner(root)
+
+      assert_mixed_summary(status, rows.to_h { |row| [row['name'], row] }, output)
+    end
+  end
+
+  def assert_mixed_summary(status, by_name, output)
+    assert_equal 0, status
+    assert_equal 'pass', by_name.fetch('alpha')['verdict']
+    assert_equal 'blocked', by_name.fetch('fake')['verdict']
+    assert_includes output, 'completed=1'
+    assert_includes output, 'blocked=1'
+  end
+end
+
 # The checkout decides the pin: what the runner fetched is only half of it.
 class OracleFetchTest < OracleFixtureTest
-  def test_checkout_of_another_commit_skips
+  def test_checkout_of_another_commit_blocks
     Dir.mktmpdir do |root|
       build_oracle(root, 'minitest', sha: "#{SHA}\n", run: PASS_SCRIPT)
 
       status, rows, _output = run_runner(root, env: { 'GIT_REV' => SHA, 'GIT_CHECKOUT_REF' => ALT_SHA })
 
-      assert_equal 0, status
-      assert_equal 'skip', rows[0]['verdict']
+      assert_equal 2, status
+      assert_equal 'blocked', rows[0]['verdict']
       assert_includes rows[0]['reason'], "fetched HEAD #{ALT_SHA} does not match pin #{SHA}"
     end
   end
@@ -484,13 +604,13 @@ class OracleFetchTest < OracleFixtureTest
     end
   end
 
-  def test_moved_tag_that_does_not_match_the_pin_skips
+  def test_moved_tag_that_does_not_match_the_pin_blocks
     Dir.mktmpdir do |root|
       build_oracle(root, 'minitest', sha: "#{SHA}\ntag v5.27.0\n", run: PASS_SCRIPT)
 
       _status, rows, _output = run_runner(root, env: { 'GIT_SHA_FETCH_FAILS' => '1', 'GIT_TAG_REV' => ALT_SHA })
 
-      assert_equal 'skip', rows[0]['verdict']
+      assert_equal 'blocked', rows[0]['verdict']
       assert_includes rows[0]['reason'], "fetched HEAD #{ALT_SHA} does not match pin #{SHA}"
       assert_tag_fallback_fetches(root)
     end
@@ -506,19 +626,19 @@ class OracleFetchTest < OracleFixtureTest
 end
 
 class OracleLifecycleTest < OracleFixtureTest
-  def test_bundle_install_failure_skips
+  def test_bundle_install_failure_blocks
     Dir.mktmpdir do |root|
       build_oracle(root, 'faker', sha: local_pin(root, 'faker'), run: PASS_SCRIPT)
 
       status, rows, _output = run_runner(root, env: { 'STUB_EXIT' => '3' })
 
-      assert_equal 0, status
-      assert_equal 'skip', rows[0]['verdict']
-      assert_install_skip(root, rows[0])
+      assert_equal 2, status
+      assert_equal 'blocked', rows[0]['verdict']
+      assert_install_block(root, rows[0])
     end
   end
 
-  def assert_install_skip(root, row)
+  def assert_install_block(root, row)
     assert_includes row['reason'], 'bundle install failed (exit 3)'
     overlay = File.join(root, 'test', 'oracles', 'faker', 'Gemfile')
 
@@ -537,14 +657,14 @@ class OracleLifecycleTest < OracleFixtureTest
     end
   end
 
-  def test_timeout_expires_the_suite_and_skips
+  def test_timeout_expires_the_suite_and_blocks
     Dir.mktmpdir do |root|
       build_oracle(root, 'vcr', sha: local_pin(root, 'vcr'), run: HANG_SCRIPT)
 
       status, rows, _output = run_runner(root, env: { 'ORACLE_TIMEOUT' => '1' })
 
-      assert_equal 0, status
-      assert_equal 'skip', rows[0]['verdict']
+      assert_equal 2, status
+      assert_equal 'blocked', rows[0]['verdict']
       assert_includes rows[0]['reason'], 'timed out after 1s'
     end
   end
@@ -583,27 +703,27 @@ class OracleLifecycleTest < OracleFixtureTest
     end
   end
 
-  def test_bundle_install_timeout_skips
+  def test_bundle_install_timeout_blocks
     Dir.mktmpdir do |root|
       build_oracle(root, 'faker', sha: local_pin(root, 'faker'), run: PASS_SCRIPT)
 
       status, rows, _output = run_runner(root, env: { 'ORACLE_TIMEOUT' => '1' }, bundle: HANG_SCRIPT)
       log = File.join(root, 'tmp', 'oracles', 'faker-install.log')
 
-      assert_equal 0, status
-      assert_equal 'skip', rows[0]['verdict']
+      assert_equal 2, status
+      assert_equal 'blocked', rows[0]['verdict']
       assert_includes rows[0]['reason'], "bundle install timed out after 1s (#{log})"
     end
   end
 
-  def test_local_pin_missing_directory_skips_the_fetch
+  def test_local_pin_missing_directory_blocks_the_fetch
     Dir.mktmpdir do |root|
       build_oracle(root, 'faker', sha: "local #{File.join(root, 'src', 'ghost')}\n", run: PASS_SCRIPT)
 
       status, rows, _output = run_runner(root, env: { 'GIT_EXIT' => '127' })
 
-      assert_equal 0, status
-      assert_equal 'skip', rows[0]['verdict']
+      assert_equal 2, status
+      assert_equal 'blocked', rows[0]['verdict']
       assert_broken_local_pin(rows[0], root)
     end
   end
@@ -664,8 +784,10 @@ class OracleResultsTest < OracleFixtureTest
   end
 
   def assert_skip_txt_merged(by_name)
+    assert_equal 'skip', by_name.fetch('alpha')['verdict']
     assert_includes by_name.fetch('alpha')['reason'], 'frontends unimplemented'
     assert_includes by_name.fetch('alpha')['reason'], 'https://example.com/issue/42'
+    assert_equal 'blocked', by_name.fetch('beta')['verdict']
     refute_includes(by_name.fetch('beta')['reason'], 'example.com')
   end
 
@@ -682,21 +804,14 @@ class OracleResultsTest < OracleFixtureTest
   end
 
   def assert_row_shape(row, root)
-    assert_equal %w[name pin pass fail skip pct verdict reason], row.keys
+    assert_equal %w[name pin pass fail skip pct verdict reason upstream_exit], row.keys
     assert_equal expected_row(root), row
   end
 
   def expected_row(root)
-    {
-      'name' => 'alpha',
-      'pin' => File.join(root, 'src', 'alpha'),
-      'pass' => 3,
-      'fail' => 0,
-      'skip' => 0,
-      'pct' => 100,
-      'verdict' => 'pass',
-      'reason' => nil
-    }
+    { 'name' => 'alpha', 'pin' => File.join(root, 'src', 'alpha'),
+      'pass' => 3, 'fail' => 0, 'skip' => 0, 'pct' => 100, 'verdict' => 'pass',
+      'reason' => nil, 'upstream_exit' => 0 }
   end
 end
 

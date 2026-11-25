@@ -28,12 +28,16 @@ bundle exec rspec 2>&1 | tee "$log" || suite_status=$?
 # they fail.
 # The helper is plain Ruby, so RUBYOPT is cleared: it must not run inside the
 # shadowed bundle.
+totals_status=0
 if RUBYOPT= ruby "$FAST_RSPEC_ROOT/test/oracles/support/totals.rb" \
      --dialect rspec --oracle "${ORACLE_NAME:-?}" "$log"; then
-  exit 0
+  totals_status=$?
 fi
 
-# No totals line (the suite crashed before completing) or nothing executed:
-# the helper says why on stderr; exit with the suite's own status.
-((suite_status > 0)) || suite_status=1
+# A parsed totals line must never hide a non-zero upstream exit: the runner
+# records the status this script returns as the run's upstream_exit, so
+# returning 0 after a failed suite would report a clean pass in results.json.
+# With no totals line (a crash before completion) the helper says why on
+# stderr and both statuses are non-zero anyway.
+((suite_status > 0)) || suite_status=$((totals_status > 0 ? 1 : 0))
 exit "$suite_status"

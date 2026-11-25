@@ -10,8 +10,56 @@ module Oracles
   # unshifts lib/compat onto $LOAD_PATH so our require paths shadow upstream.
   RUBYOPT_PREFIX = "-I#{SUPPORT_DIR} -rcompat_shadow".freeze
 
-  # One row per oracle suite, mirroring the docs/compat.md columns (Pinned/Pass/Skip/%).
-  Row = Struct.new(:name, :pin, :pass, :fail, :skip, :pct, :verdict, :reason, keyword_init: true)
+  # Verdicts: pass/fail are completed runs against a real compat adapter;
+  # blocked is a run that could not verify compatibility (fetch, install,
+  # timeout, crash or an inert placeholder); skip is an accepted, documented
+  # non-gating skip. upstream_exit carries the upstream process status for a
+  # completed run so a parsed totals line cannot hide a non-zero exit.
+  PASS = 'pass'
+  FAIL = 'fail'
+  BLOCKED = 'blocked'
+  SKIP = 'skip'
+  COMPLETED_VERDICTS = [PASS, FAIL].freeze
+
+  Row = Struct.new(:name, :pin, :pass, :fail, :skip, :pct, :verdict, :reason, :upstream_exit,
+                   keyword_init: true)
+
+  # Aggregate verdict and counts printed after the per-suite table. A run with
+  # no completed suite is never reported as compatibility verification, even
+  # when every unavailable suite is an accepted skip.
+  class Summary
+    def initialize(rows)
+      @rows = rows
+      @done = rows.count { |row| COMPLETED_VERDICTS.include?(row.verdict) }
+    end
+
+    def to_s
+      "oracle summary: #{counts} - #{verdict}"
+    end
+
+    def exit_status
+      return 1 if @rows.any? { |row| row.verdict == FAIL }
+      return 2 if @done.zero? && @rows.any? { |row| row.verdict == BLOCKED }
+
+      0
+    end
+
+    private
+
+    def counts
+      parts = COMPLETED_VERDICTS + [BLOCKED, SKIP]
+      values = parts.map { |verdict| "#{verdict}=#{@rows.count { |row| row.verdict == verdict }}" }
+      "completed=#{@done} #{values.join(' ')}"
+    end
+
+    def verdict
+      return 'no compatibility verification: all suites skipped' if @done.zero? &&
+                                                                    @rows.all? { |row| row.verdict == SKIP }
+      return 'no compatibility verification: all available executions blocked' if @done.zero?
+
+      "compatibility verification completed for #{@done} suite(s)"
+    end
+  end
 
   # test/oracles/<name>/.sha — the first entry is the pinned 40-hex upstream
   # commit (or `local <path>` to bypass version control entirely), an optional
@@ -186,10 +234,48 @@ module Oracles
     def tag_ref = "refs/tags/#{@pin.tag}"
   end
 
+  # The shadowed require paths live in lib/compat. A file that only requires
+  # fast_rspec is an inert placeholder: a suite passing through it proves
+  # nothing about FastRspec compatibility. A missing lib/compat directory means
+  # there are no adapters to inspect (offline fixtures), so the probe is inert.
+  module Compat
+    REQUIRE_LINE = /\Arequire ['"]fast_rspec['"]\z/
+
+    module_function
+
+    def placeholder_reason(name, root)
+      dir = File.join(root, 'lib', 'compat')
+      return nil unless File.directory?(dir)
+
+      path = File.join(dir, "#{name.tr('-', '/')}.rb")
+      return "compat adapter #{relative(path, root)} is missing" unless File.file?(path)
+      return nil if implementation?(path)
+
+      "compat adapter #{relative(path, root)} is an inert placeholder, not a compatibility implementation"
+    end
+
+    def implementation?(path)
+      File.readlines(path, chomp: true).any? do |line|
+        text = line.strip
+        next false if text.empty? || text.start_with?('#') || REQUIRE_LINE.match?(text)
+
+        true
+      end
+    end
+
+    def relative(path, root) = path.delete_prefix("#{File.expand_path(root)}/")
+
+    def block_reason(reason, counts, upstream_exit)
+      pass, fail, skip = counts
+      "#{reason}; upstream exit #{upstream_exit}; " \
+        "upstream totals pass=#{pass}, fail=#{fail}, skip=#{skip}"
+    end
+  end
+
   # Runs one oracle: bundle-installs the overlay Gemfile, executes the run
   # script, classifies the outcome into a Row. Checkout, install and
-  # crash/timeout failures all classify as skip; only counted suite failures
-  # fail, and skips never gate the exit status.
+  # crash/timeout failures classify as blocked unless skip.txt accepts them;
+  # only counted run failures fail, and accepted skips never gate the status.
   class Suite
     RESULT_LINE = /\AORACLE RESULT pass=(\d+) fail=(\d+) skip=(\d+)\z/
 
@@ -204,11 +290,12 @@ module Oracles
 
     def call
       @io.puts("==> #{@name} (#{@pin.sha})")
+      @compat_reason = Compat.placeholder_reason(@name, @root)
       src, reason = Fetch.new(name: @name, pin: @pin, root: @root, env: @env).checkout
-      return skip_row('fetch', reason) if reason
+      return unavailable_row('fetch', reason) if reason
 
-      skip = install(src)
-      return skip if skip
+      blocked = install(src)
+      return blocked if blocked
 
       finish(src)
     end
@@ -220,9 +307,9 @@ module Oracles
       status = Shell.run(child_env(src), %w[bundle install], chdir: @root, log: log, timeout: @timeout)
       return nil if status.is_a?(Process::Status) && status.success?
 
-      return skip_row('install', "bundle install timed out after #{@timeout}s (#{log})") if status == :timeout
+      return unavailable_row('install', "bundle install timed out after #{@timeout}s (#{log})") if status == :timeout
 
-      skip_row('install', "bundle install failed (exit #{status.exitstatus}): #{Shell.tail(log)} (#{log})")
+      unavailable_row('install', "bundle install failed (exit #{status.exitstatus}): #{Shell.tail(log)} (#{log})")
     end
 
     def finish(src)
@@ -230,20 +317,29 @@ module Oracles
       script = File.join(oracle_dir, 'run')
       status = Shell.run(child_env(src, shadow: true), [script], chdir: @root, log: log, timeout: @timeout)
       counts = result_counts(log)
-      return skip_row('timeout', "run timed out after #{@timeout}s (#{log})") if status == :timeout
+      return unavailable_row('timeout', "run timed out after #{@timeout}s (#{log})") if status == :timeout
 
-      return skip_row('run', "no ORACLE RESULT after exit #{status.exitstatus}: #{Shell.tail(log)}") unless counts
+      unless counts
+        return unavailable_row('run', "no ORACLE RESULT after exit #{status.exitstatus}: #{Shell.tail(log)}")
+      end
 
-      counted_row(counts, status)
+      counted_row(counts, status, status.exitstatus)
     end
 
-    def counted_row(counts, status)
+    def counted_row(counts, status, upstream_exit)
       pass, fail, skip = counts
-      return row(pass:, fail:, skip:, verdict: 'pass') if status.success? && fail.zero?
+      # A placeholder cannot supply compatibility proof even when the upstream
+      # suite exits zero and totals parse as a clean pass.
+      attrs = { pass: pass, fail: fail, skip: skip, upstream_exit: upstream_exit }
+      if @compat_reason
+        reason = Compat.block_reason(@compat_reason, counts, upstream_exit)
+        return row(attrs.merge(verdict: BLOCKED, reason: reason))
+      end
+      return row(attrs.merge(verdict: PASS)) if status.success? && fail.zero?
 
-      reason = "#{fail} failure(s)"
-      reason << ", exit #{status.exitstatus}" unless status.success?
-      row(pass:, fail:, skip:, verdict: 'fail', reason: reason)
+      reason = fail.zero? ? "upstream exit #{upstream_exit}" : "#{fail} failure(s)"
+      reason += ", exit #{upstream_exit}" if !fail.zero? && !status.success?
+      row(attrs.merge(verdict: FAIL, reason: reason))
     end
 
     def result_counts(log)
@@ -254,16 +350,22 @@ module Oracles
       [match[1].to_i, match[2].to_i, match[3].to_i]
     end
 
-    def row(pass:, fail:, skip:, verdict:, reason: nil)
+    def row(counts)
+      pass = counts.fetch(:pass)
+      fail = counts.fetch(:fail)
+      skip = counts.fetch(:skip)
       total = pass + fail + skip
       pct = total.zero? ? 0 : (pass * 100.0 / total).round
-      Row.new(name: @name, pin: @pin.sha, pass:, fail:, skip:, pct:, verdict:, reason:)
+      attrs = counts.merge(name: @name, pin: @pin.sha, pct: pct)
+      Row.new(**attrs)
     end
 
-    def skip_row(stage, reason)
+    # Only an explicit skip.txt entry makes an unavailable run non-gating.
+    # Everything else is blocked and cannot be read as compatibility proof.
+    def unavailable_row(stage, reason)
       documented = documented_skip("#{@name}:#{stage}")
       reason = "#{reason} — documented: #{documented}" if documented
-      row(pass: 0, fail: 0, skip: 0, verdict: 'skip', reason: reason)
+      row(pass: 0, fail: 0, skip: 0, verdict: documented ? SKIP : BLOCKED, reason: reason)
     end
 
     # skip.txt documents accepted skips as `<id> <reason> (<issue url>)`; a
@@ -309,8 +411,8 @@ module Oracles
   end
 
   # Discovers test/oracles/<name>/ dirs, runs each pinned suite and reports one
-  # Row per suite. Exit status is 1 only when a suite ran and failed
-  # un-skipped; skips (fetch, install, crash, timeout) never gate.
+  # Row per suite. Exit 1 on a counted run failure, 2 when nothing completed
+  # and anything is blocked, 0 for completed runs or documented-only skips.
   class Runner
     # rspec releases from its monorepo (github.com/rspec/rspec): the split
     # repos are archived and stopped at 3.13.2/3.13.3, so the rspec oracles
@@ -348,8 +450,9 @@ module Oracles
       pins = names.to_h { |name| [name, checked_pin(name)] }
       rows = names.map { |name| suite(name, pins.fetch(name)).call }
       write_results(rows)
-      print_table(rows)
-      rows.any? { |row| row.verdict == 'fail' } ? 1 : 0
+      summary = Summary.new(rows)
+      print_table(rows, summary)
+      summary.exit_status
     end
 
     private
@@ -402,9 +505,10 @@ module Oracles
       File.write(File.join(@root, 'tmp', 'oracles', 'results.json'), "#{JSON.pretty_generate(rows.map(&:to_h))}\n")
     end
 
-    def print_table(rows)
+    def print_table(rows, summary)
       lines = ['', header]
       rows.each { |row| lines << table_row(row) }
+      lines << summary.to_s
       lines << "#{rows.size} suites → #{File.join(@root, 'tmp', 'oracles', 'results.json')}"
       @io.puts(lines.join("\n"))
     end
