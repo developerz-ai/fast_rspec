@@ -101,7 +101,10 @@ escalate:
 # CUT 2026-11-28 (fleet dz cost standard, from the 30-day prod census across both accounts):
 # `security-release` (fleet-wide 170 firings -> 3 product merges + 17 REPORT.md-only PRs) and the
 # daily `health` (270 firings -> 8 asks -> 0 merges; the platform's red-base ask already files a fix
-# when `main` is red). A security fix arrives as a Dependabot security PR.
+# when `main` is red). A dependency's security fix arrives as a
+# Dependabot security PR; an advisory against fast_rspec itself arrives as an issue or a GitHub
+# security report, which the agent triages and fixes like any bug; its bump is the next `release-due`
+# run unless a person cuts it sooner.
 schedules:
   # Weekly and judged, so a merge never cuts a release (owner, 2026-11-01: "no auto, not dependabot,
   # us developerz.ai AI decides if needed"). Monday, the fleet's one release slot (owner, 2026-11-26).
@@ -136,7 +139,8 @@ scout:
 
 # devops: off. The 2026-11-28 sweep turned it on here, and the same day's follow-up reverted it,
 # because the watch is noisy: 240 of 401 tasks failed or were cancelled fleet-wide in 14 days.
-# Security bumps arrive through Dependabot (.github/dependabot.yml). `advisories` turns it on.
+# Dependency security bumps arrive through Dependabot (.github/dependabot.yml). `advisories` turns
+# it on.
 devops:
   watch: off
 
