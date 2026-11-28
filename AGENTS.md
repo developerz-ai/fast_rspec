@@ -38,9 +38,9 @@ Keep this table aligned with `bin/check` and `apps/fast-rspec/Rakefile`. Unsuppo
 
 | Task | Command and actual behavior |
 |---|---|
-| Install | `bundle install` (in `apps/fast-rspec/`) |
-| Default pre-PR gate | `bin/check`: lint + compile on CRuby + bootstrap unit tests |
-| Fast gate | `bin/check fast`: lint + bootstrap unit tests; skips compilation |
+| Install (fresh clone) | `bin/setup`: build-essential if missing, `mise install` (Ruby from `apps/fast-rspec/.ruby-version`/`mise.toml`), `bundle install`, compile the extension. Then `git config core.hooksPath .githooks` for the rubocop pre-commit hook |
+| Default pre-PR gate | `bin/check`: lint + compile + unit + forced-PureRuby unit + package smoke (~30 s); what CI's PR run does on its one Ruby leg. CI's push to `main` adds 3.2, 3.4, JRuby and TruffleRuby |
+| Fast gate (inner loop) | `bin/check fast`: lint + bootstrap unit tests; skips compilation (~18 s) |
 | Full gate | `bin/check full`: default stages + oracles + demo apps; the oracle stage runs the pinned upstream suites, where skips-with-reason don't gate |
 | Own suite | `bin/rake test`: plain-Ruby bootstrap harness over fixed `test/unit/**/*_test.rb` glob; not dogfooded Minitest or a parallel runner |
 | Single-file filtering | `TEST=...` is not supported by the current Rake task; it still runs the fixed glob |

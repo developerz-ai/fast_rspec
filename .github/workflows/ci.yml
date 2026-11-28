@@ -8,9 +8,10 @@ on:
 permissions:
   contents: read
 
+# A newer push to a PR cancels its older run; every main push keeps its own group and verdict.
 concurrency:
-  group: ci-${{ github.ref }}
-  cancel-in-progress: ${{ github.ref != 'refs/heads/main' }}
+  group: ci-${{ github.event.pull_request.number || github.sha }}
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
 
 env:
   CI: '1'
@@ -21,6 +22,35 @@ defaults:
     working-directory: apps/fast-rspec
 
 jobs:
+  # Which areas did this change touch? `code` is everything the test, package and demo jobs
+  # read; a docs-only PR skips them and `CI OK` counts the skip. Lint always runs: the
+  # public-tree guard reads every tracked file. A push to main runs everything.
+  changes:
+    name: Changes
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    defaults:
+      run:
+        working-directory: .
+    permissions:
+      contents: read
+      pull-requests: read
+    outputs:
+      code: ${{ github.event_name != 'pull_request' || steps.filter.outputs.code == 'true' }}
+    steps:
+      - uses: actions/checkout@v7
+      - uses: dorny/paths-filter@v3
+        id: filter
+        with:
+          filters: |
+            code:
+              - 'apps/**'
+              - 'demo/**'
+              - 'bin/**'
+              - 'Gemfile*'
+              - 'mise.toml'
+              - '.github/workflows/ci.yml'
+
   lint:
     name: Lint / RuboCop
     runs-on: ubuntu-latest
@@ -28,7 +58,7 @@ jobs:
     steps:
       - uses: actions/checkout@v7
       - uses: ruby/setup-ruby@v1
-        with: { ruby-version: '4.0', bundler-cache: true }
+        with: { ruby-version: .ruby-version, bundler-cache: true, working-directory: apps/fast-rspec }
       - run: bundle exec rubocop --parallel
       - name: Public tree
         env:
@@ -41,12 +71,15 @@ jobs:
 
   test:
     name: Test / ${{ matrix.ruby }}
+    needs: changes
+    if: needs.changes.outputs.code == 'true'
     runs-on: ubuntu-latest
-    timeout-minutes: 20
+    timeout-minutes: 10
     strategy:
       fail-fast: false
       matrix:
-        ruby: ['3.2', '3.4', '4.0', 'jruby', 'truffleruby']
+        # A PR runs the representative leg (the pinned Ruby); main runs the whole support matrix.
+        ruby: ${{ fromJSON(github.event_name == 'pull_request' && '["4.0"]' || '["3.2", "3.4", "4.0", "jruby", "truffleruby"]') }}
     steps:
       - uses: actions/checkout@v7
       - uses: ruby/setup-ruby@v1
@@ -60,18 +93,22 @@ jobs:
 
   package:
     name: Package / build + smoke
+    needs: changes
+    if: needs.changes.outputs.code == 'true'
     runs-on: ubuntu-latest
     timeout-minutes: 10
     steps:
       - uses: actions/checkout@v7
       - uses: ruby/setup-ruby@v1
-        with: { ruby-version: '4.0', bundler-cache: true }
+        with: { ruby-version: .ruby-version, bundler-cache: true, working-directory: apps/fast-rspec }
       - run: bundle exec rake smoke
 
   demo:
     name: Demo apps / upstream vs fast_rspec
+    needs: changes
+    if: needs.changes.outputs.code == 'true'
     runs-on: ubuntu-latest
-    timeout-minutes: 30
+    timeout-minutes: 10
     steps:
       - uses: actions/checkout@v7
       - uses: ruby/setup-ruby@v1
@@ -88,7 +125,7 @@ jobs:
   ci-ok:
     name: CI OK
     if: always()
-    needs: [lint, test, package, demo]
+    needs: [changes, lint, test, package, demo]
     runs-on: ubuntu-latest
     timeout-minutes: 5
     # No checkout step here, so the workflow-level working-directory would not exist for its shell.
@@ -96,9 +133,16 @@ jobs:
       run:
         working-directory: .
     steps:
+      # `skipped` passes only where `Changes` proved the diff touches no code; anything else
+      # (failure, cancelled, or a skip with code changed) fails.
       - name: All required jobs passed
         env:
           RESULTS: ${{ join(needs.*.result, ' ') }}
+          CODE: ${{ needs.changes.outputs.code }}
         run: |
-          echo "Results: $RESULTS"
-          for r in $RESULTS; do [ "$r" = success ] || exit 1; done
+          echo "Results: $RESULTS (code changed: $CODE)"
+          for r in $RESULTS; do
+            [ "$r" = success ] && continue
+            [ "$r" = skipped ] && [ "$CODE" = false ] && continue
+            exit 1
+          done
