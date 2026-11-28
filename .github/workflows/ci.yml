@@ -35,8 +35,9 @@ jobs:
     permissions:
       contents: read
       pull-requests: read
+    # The PR files API lists at most 3,000 files, so a larger PR cannot be proven docs-only: it runs.
     outputs:
-      code: ${{ github.event_name != 'pull_request' || steps.filter.outputs.code == 'true' }}
+      code: ${{ github.event_name != 'pull_request' || github.event.pull_request.changed_files >= 3000 || steps.filter.outputs.code == 'true' }}
     steps:
       - uses: actions/checkout@v7
       - uses: dorny/paths-filter@v3
@@ -78,8 +79,9 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        # A PR runs the representative leg (the pinned Ruby); main runs the whole support matrix.
-        ruby: ${{ fromJSON(github.event_name == 'pull_request' && '["4.0"]' || '["3.2", "3.4", "4.0", "jruby", "truffleruby"]') }}
+        # A PR runs the support floor (3.2, the gemspec minimum, catches a too-new API) and the
+        # pinned Ruby; main runs the whole matrix, JRuby and TruffleRuby included.
+        ruby: ${{ fromJSON(github.event_name == 'pull_request' && '["3.2", "4.0"]' || '["3.2", "3.4", "4.0", "jruby", "truffleruby"]') }}
     steps:
       - uses: actions/checkout@v7
       - uses: ruby/setup-ruby@v1
