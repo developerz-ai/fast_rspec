@@ -1,3 +1,4 @@
-# Toolchain as text. Keep in lock-step with .github/workflows/ci.yml.
+# Toolchain as text. Keep in lock-step with apps/fast-rspec/.ruby-version, which CI's
+# setup-ruby reads (.github/workflows/ci.yml).
 [tools]
 ruby = "4.0"

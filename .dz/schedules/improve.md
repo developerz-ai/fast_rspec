@@ -1,7 +1,6 @@
 # Brief: monthly improvement
 
-Fired every Monday by `schedules: improve`. **Act only on the first Monday of the month (UTC day 1-7);
-otherwise stop.** fast_rspec is maintained by agents only. Once a month, leave it measurably faster
+Fired on the first Monday of the month by `schedules: improve` (`weeks_of_month: [1]`). fast_rspec is maintained by agents only. Once a month, leave it measurably faster
 and one step ahead of the next Ruby, Rails and RSpec/Minitest release. Read `AGENTS.md` first.
 
 ## 1. Canary first

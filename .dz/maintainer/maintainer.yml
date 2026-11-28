@@ -98,24 +98,22 @@ release:
 escalate:
   ask_before_acting: [breaking_change]
 
+# CUT 2026-11-28 (fleet dz cost standard, from the 30-day prod census across both accounts):
+# `security-release` (fleet-wide 170 firings -> 3 product merges + 17 REPORT.md-only PRs) and the
+# daily `health` (270 firings -> 8 asks -> 0 merges; the platform's red-base ask already files a fix
+# when `main` is red). A security fix arrives through `devops.watch` below.
 schedules:
   # Weekly and judged, so a merge never cuts a release (owner, 2026-11-01: "no auto, not dependabot,
-  # us developerz.ai AI decides if needed"). One weekday per repo, so the fleet is not hit at once.
+  # us developerz.ai AI decides if needed"). Monday, the fleet's one release slot (owner, 2026-11-26).
   - name: release-due
-    days: [thu]
+    days: [mon]
     hours_utc: [3]
     brief_file: .dz/schedules/release-due.md
-  # The one exception, so a confirmed security fix does not wait up to a week for the slot above.
-  - name: security-release
-    days: [mon, tue, wed, fri, sat, sun]
-    hours_utc: [1]
-    brief_file: .dz/schedules/security-release.md
-  - name: health
-    days: [mon, tue, wed, thu, fri, sat, sun]
-    hours_utc: [7]
-    brief_file: .dz/schedules/health.md
+  # Monthly: the first Monday (`weeks_of_month`), the 2026-11-28 standard for a repo in its design
+  # phase. The brief no longer checks the date itself.
   - name: improve
     days: [mon]
+    weeks_of_month: [1]
     hours_utc: [8]
     brief_file: .dz/schedules/improve.md
   - name: compat
@@ -131,8 +129,18 @@ schedules:
 branches:
   close_inactive_after_days: 60
 
-# scout: the platform's daily survey of this repo files only what is already BROKEN
-# (red CI, failing tests, a security advisory, a broken build or link) — never an
-# improvement idea. `full` lets it file ideas too; `off` stops the survey.
+# scout: off (2026-11-28 standard for a design-phase repo: a full survey run is ~14M tokens, and
+# `improve`, `compat` and CI already read this tree). `broken_only` turns it back on for breakage.
 scout:
-  survey: broken_only
+  survey: off
+
+# devops: the gem is published (rubygems.org/gems/fast_rspec), so first-tier advisories are read
+# against what it ships and a fix is filed at once (2026-11-28 standard; it replaces the daily
+# security-release). `off` stops it.
+devops:
+  watch: advisories
+
+# care.docs_drift: off (2026-11-28 standard: fleet-wide 47 docs-drift tasks gave 8 docs-only merges
+# and 33 failures).
+care:
+  docs_drift: off
